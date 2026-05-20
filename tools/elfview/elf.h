@@ -1,0 +1,159 @@
+#ifndef SKENE_ELF_H
+#define SKENE_ELF_H
+
+// ELF file format support:
+// This file presents all the necessary data structures and functions related to vieweing
+// parsing, processing, etc. ELF files.
+// As of now, we only support 64 bit variants, as the whole target of the project is ELF-based 64 bit systems
+// References:
+// https://uclibc.org/docs/elf-64-gen.pdf
+// Linux kernel definitions: https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/uapi/linux/elf.h#L1
+// Linux insides (ELF format): https://0xax.gitbooks.io/linux-insides/content/Theory/linux-theory-2.html
+// elfmaster library: https://github.com/elfmaster/libelfmaster/tree/master
+
+#include <common/common.h>
+
+//  e_ident identify the file as an ELF object file, and provide information
+//  about the data representation of the object file structures. The bytes of this
+//  array that have defined meanings are detailed below. The remaining bytes
+//  are reserved for future use, and should be set to zero. Each byte of the
+//  array is indexed symbolically using following names:
+// 
+// Purpose: file identification
+#define SKENE_ELF_IDENT_MAG0 0
+// Purpose: not set, should be 0d
+#define SKENE_ELF_IDENT_MAG1 1
+// Purpose: not set, should be 0d
+#define SKENE_ELF_IDENT_MAG2 2
+// Purpose: not set, should be 0d
+#define SKENE_ELF_IDENT_MAG3 3
+// Purpose: file class
+#define SKENE_ELF_IDENT_CLASS 4
+// Purpose: data encoding
+#define SKENE_ELF_DATA 5
+// Purpose: file version
+#define SKENE_ELF_VERSION 6
+// Purpose: OS/ABI identification
+#define SKENE_ELF_OSABI 7
+// Purpose: ABI version
+#define SKENE_ELF_ABIVERSION 8
+// Purpose: Padding bytes
+#define SKENE_ELF_PAD 9
+// Purpose: size of e_ident[]
+#define SKENE_ELF_NIDENT 16
+
+// e_ident[EI_MAG0] through e_ident[EI_MAG3] contain a “magic number,”
+// identifying the file as an ELF object file. They contain the characters ‘\x7f’,
+// ‘E’, ‘L’, and ‘F’, respectively.
+// Magic number has 4 bytes and should be:
+#define SKENE_ELF_MAGIC_SIZE 4
+#define SKENE_ELF_MAGIC_WORD "\x7f" "ELF"
+
+// e_ident[EI_CLASS] identifies the class of the object file, or its capacity.
+// Table 3 lists the possible values.
+// This document describes the structures for ELFCLASS64.
+// The class of the ELF file is independent of the data model assumed by the
+// object code. The EI_CLASS field identifies the file format;
+// a processorspecific flag in the e_flags field, described below, may be used to identify
+// the application’s data model if the processory supports multiple models.
+//
+// i.e. ELF file of a 32-bit binary
+#define SKENE_ELF_CLASS32 1
+
+// i.e. ELF file of a 64-bit binary
+#define SKENE_ELF_CLASS64 2
+
+// e_ident[EI_DATA] specifies the data encoding of the object file data
+// structures. Table 4 lists the encodings defined for ELF-64.
+// For the convenience of code that examines ELF object files at run time
+// (e.g., the dynamic loader), it is intended that the data encoding of the
+// object file will match that of the running program. For environments that
+// support both byte orders, a processor-specific flag in the e_flags field,
+// described below, may be used to identify the application’s operating mode.
+//
+// Object file data structures are littleendian
+#define SKENE_ELF_DATA_2LSB 1
+// Object file data structures are bigendian
+#define SKENE_ELF_DATA_2MSB 2
+
+// e_ident[EI_OSABI] identifies the operating system and ABI for which the
+// object is prepared. Some fields in other ELF structures have flags and
+// values that have environment-specific meanings; the interpretation of
+// those fields is determined by the value of this field. Table 5 lists the
+// currently-defined values for this field.
+//
+// i.e. System V ABI
+#define SKENE_ELF_OSABI_SYSV 0
+// i.e. HP-UX operating system
+#define SKENE_ELF_OSABI_HPUX 1
+// i.e. Standalone (embedded) application
+#define SKENE_ELF_OSABI_STANDALONE 255
+
+// e_type identifies the object file type.
+//
+// i.e. No file type
+#define SKENE_ELF_TYPE_NONE 0
+// i.e. Relocatable object file
+#define SKENE_ELF_TYPE_REL 1
+// i.e. Executable file
+#define SKENE_ELF_TYPE_EXEC 2
+// i.e. Shared object file
+#define SKENE_ELF_TYPE_DYN 3
+// i.e. Core file
+#define SKENE_ELF_TYPE_CORE 4
+// i.e. Environment-specific use
+#define SKENE_ELF_TYPE_LOOS 0xFE00
+// i.e. ...
+#define SKENE_ELF_TYPE_HIOS 0xFEFF
+// i.e. Processor-specific use
+#define SKENE_ELF_TYPE_LOPROC 0xFF00
+// i.e. ...
+#define SKENE_ELF_TYPE_HIPROC 0xFFFF
+
+typedef uint16_t elf64_half_t;
+typedef uint32_t elf64_word_t;
+typedef uint64_t elf64_addr_t;
+typedef uint64_t elf64_off_t;
+typedef uint64_t elf64_xword_t;
+
+typedef struct {
+  unsigned char e_ident[SKENE_ELF_NIDENT]; /* ELF identifications */
+  elf64_half_t e_type;                        /* Object file type */
+  elf64_half_t e_machine;                     /* Machine type */
+  elf64_word_t e_version;                     /* Object file version */
+  elf64_addr_t e_entry;                       /* Entry point address */
+  elf64_off_t e_phoff;                        /* Program header offset */
+  elf64_off_t e_shoff;                        /* Section header offset */
+  elf64_word_t e_flags;                       /* Processor-specific flags */
+  elf64_half_t e_ehsize;                      /* ELF header size */
+  elf64_half_t e_phentsize;                   /* Size of program header entry */
+  elf64_half_t e_phnum;     /* Number of program header entries */
+  elf64_half_t e_shentsize; /* Size of section header entry */
+  elf64_half_t e_shnum;     /* Number of section header entries */
+  elf64_half_t e_shstrndx;  /* Section name string table index */
+} elf64_header_t;
+
+typedef struct {
+  elf64_word_t sh_name;       /* Section name */
+  elf64_word_t sh_type;       /* Section type */
+  elf64_xword_t sh_flags;     /* Section attributes */
+  elf64_addr_t sh_addr;       /* Virtual address in memory */
+  elf64_off_t sh_offset;      /* Offset in file */
+  elf64_xword_t sh_size;      /* Size of section */
+  elf64_word_t sh_link;       /* Link to other section */
+  elf64_word_t sh_info;       /* Miscellaneous information */
+  elf64_xword_t sh_addralign; /* Address alignment boundary */
+  elf64_xword_t sh_entsize;   /* Size of entries, if section has table */
+} elf64_section_header_t;
+
+#define SKENE_ELF_MAX_SECTION_HEADERS 65535
+
+typedef struct {
+  elf64_header_t header;
+  elf64_section_header_t section_headers[SKENE_ELF_MAX_SECTION_HEADERS];
+  elf64_word_t section_headers_count;
+} elf64_file_t;
+
+PUBLIC int elf64_parse_buffer(const char *buffer, size_t bufflen, elf64_file_t *file);
+
+#endif
