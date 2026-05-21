@@ -1,6 +1,7 @@
 #include "./elf.h"
 
 #include <string.h>
+#include <assert.h>
 
 PUBLIC int elf64_parse_buffer(const char *buffer, size_t bufflen, elf64_file_t *file)
 {
@@ -18,9 +19,13 @@ PUBLIC int elf64_parse_buffer(const char *buffer, size_t bufflen, elf64_file_t *
     return -1;
   }
 
-  file->section_headers_count = file->header.e_shnum;
+  // Note: validating struct layout has the correct structure
+  // This is an assertion since we don't validate it and just slurp the memory into the
+  // memory layout.
+  assert(sizeof(file->section_headers[0]) == file->header.e_shentsize);
 
-  memcpy(&file->section_headers, buffer + file->header.e_shoff, file->section_headers_count);
+  file->section_headers_count = file->header.e_shnum;
+  memcpy(&file->section_headers, buffer + file->header.e_shoff, file->section_headers_count * sizeof(file->section_headers[0]));
 
 
   return 0;

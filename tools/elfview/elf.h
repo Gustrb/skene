@@ -146,10 +146,44 @@ typedef struct {
   elf64_xword_t sh_entsize;   /* Size of entries, if section has table */
 } elf64_section_header_t;
 
+// Marks an unused section header
+#define SKENE_ELF_SECTION_HEADER_TYPE_NULL 0
+// Contains information defined by the program
+#define SKENE_ELF_SECTION_HEADER_TYPE_PROGBITS 1
+// Contains a linker symbol table
+#define SKENE_ELF_SECTION_HEADER_TYPE_SYMTAB 2
+// Contains a string table
+#define SKENE_ELF_SECTION_HEADER_TYPE_STRTAB 3
+// Contains “Rela” type relocation entries
+#define SKENE_ELF_SECTION_HEADER_TYPE_RELA 4
+// Contains a symbol hash table
+#define SKENE_ELF_SECTION_HEADER_TYPE_HASH 5
+// Contains dynamic linking tables
+#define SKENE_ELF_SECTION_HEADER_TYPE_DYNAMIC 6
+// Contains note information
+#define SKENE_ELF_SECTION_HEADER_TYPE_NOTE 7
+// Contains uninitialized space; does not occupy any space in the file
+#define SKENE_ELF_SECTION_HEADER_TYPE_NOBITS 8
+// Contains “Rel” type relocation entries
+#define SKENE_ELF_SECTION_HEADER_TYPE_REL 9
+// Reserved
+#define SKENE_ELF_SECTION_HEADER_TYPE_SHLIB 10
+// Contains a dynamic loader symbol table
+#define SKENE_ELF_SECTION_HEADER_TYPE_DYNSYM 11
+// Environment-specific use
+#define SKENE_ELF_SECTION_HEADER_TYPE_LOOS 0x60000000
+#define SKENE_ELF_SECTION_HEADER_TYPE_HIOS 0x6FFFFFFF
+
+// Processor-specific use
+#define SKENE_ELF_SECTION_HEADER_TYPE_LOPROC 0x70000000
+#define SKENE_ELF_SECTION_HEADER_TYPE_HIPROC 0x7FFFFFFF
+
+
 #define SKENE_ELF_MAX_SECTION_HEADERS 65535
 
 typedef struct {
   elf64_header_t header;
+
   elf64_section_header_t section_headers[SKENE_ELF_MAX_SECTION_HEADERS];
   elf64_word_t section_headers_count;
 } elf64_file_t;

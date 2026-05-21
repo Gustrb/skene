@@ -8,10 +8,11 @@ void __assert_elf64_is_little_endian(elf64_file_t *file);
 void __assert_elf64_abi_should_be_systemv(elf64_file_t *file);
 void __assert_elf64_type_should_be_executable(elf64_file_t *file);
 void __assert_elf64_section_header_num_should_be_correct(elf64_file_t *file);
+void __assert_elf64_section_header_data(elf64_file_t *file);
 
 int main(void)
 {
-  TEST_START(12);
+  TEST_START(43);
   char *fixture = NULL;
   size_t len = 0;
 
@@ -29,6 +30,7 @@ int main(void)
   __assert_elf64_abi_should_be_systemv(&file);
   __assert_elf64_type_should_be_executable(&file);
   __assert_elf64_section_header_num_should_be_correct(&file);
+  __assert_elf64_section_header_data(&file);
 
   free(fixture);
   TEST_FINISH();
@@ -69,7 +71,51 @@ void __assert_elf64_type_should_be_executable(elf64_file_t *file)
   ASSERT_INT_EQ(SKENE_ELF_TYPE_DYN, file->header.e_type, "should be type executable");
 }
 
+#define NUM_SECTION_HEADERS 31
+
 void __assert_elf64_section_header_num_should_be_correct(elf64_file_t *file)
 {
-  ASSERT_INT_EQ(31, file->section_headers_count, "there should only be a few headers");
+  ASSERT_INT_EQ(NUM_SECTION_HEADERS, file->section_headers_count, "there should only be a few headers");
+}
+
+void __assert_elf64_section_header_data(elf64_file_t *file)
+{
+  elf64_word_t section_header_types[NUM_SECTION_HEADERS] = {
+    SKENE_ELF_SECTION_HEADER_TYPE_NULL,
+    SKENE_ELF_SECTION_HEADER_TYPE_NOTE,
+    SKENE_ELF_SECTION_HEADER_TYPE_NOTE,
+    SKENE_ELF_SECTION_HEADER_TYPE_PROGBITS,
+    /*SKENE_ELF_SECTION_HEADER_TYPE_HIOS*/ 1879048182,
+    SKENE_ELF_SECTION_HEADER_TYPE_DYNSYM,
+    SKENE_ELF_SECTION_HEADER_TYPE_STRTAB,
+    /*SKENE_ELF_SECTION_HEADER_TYPE_HIOS*/ 1879048191,
+    /*SKENE_ELF_SECTION_HEADER_TYPE_HIOS*/ 1879048190,
+    SKENE_ELF_SECTION_HEADER_TYPE_RELA,
+    SKENE_ELF_SECTION_HEADER_TYPE_RELA,
+    SKENE_ELF_SECTION_HEADER_TYPE_PROGBITS,
+    SKENE_ELF_SECTION_HEADER_TYPE_PROGBITS,
+    SKENE_ELF_SECTION_HEADER_TYPE_PROGBITS,
+    SKENE_ELF_SECTION_HEADER_TYPE_PROGBITS,
+    SKENE_ELF_SECTION_HEADER_TYPE_PROGBITS,
+    SKENE_ELF_SECTION_HEADER_TYPE_PROGBITS,
+    SKENE_ELF_SECTION_HEADER_TYPE_PROGBITS,
+    SKENE_ELF_SECTION_HEADER_TYPE_PROGBITS,
+    SKENE_ELF_SECTION_HEADER_TYPE_NOTE,
+    /* 14 */ 14,
+    /* 14 */ 15,
+    SKENE_ELF_SECTION_HEADER_TYPE_DYNAMIC,
+    SKENE_ELF_SECTION_HEADER_TYPE_PROGBITS,
+    SKENE_ELF_SECTION_HEADER_TYPE_PROGBITS,
+    SKENE_ELF_SECTION_HEADER_TYPE_PROGBITS,
+    SKENE_ELF_SECTION_HEADER_TYPE_NOBITS,
+    SKENE_ELF_SECTION_HEADER_TYPE_PROGBITS,
+    SKENE_ELF_SECTION_HEADER_TYPE_SYMTAB,
+    SKENE_ELF_SECTION_HEADER_TYPE_STRTAB,
+    SKENE_ELF_SECTION_HEADER_TYPE_STRTAB,
+  };
+
+  for (elf64_word_t i = 0; i < file->section_headers_count; ++i)
+  {
+    ASSERT_INT_EQ(section_header_types[i], file->section_headers[i].sh_type, "section header type should match");
+  }
 }
