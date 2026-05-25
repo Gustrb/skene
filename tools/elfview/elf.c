@@ -27,6 +27,5 @@ PUBLIC int elf64_parse_buffer(const char *buffer, size_t bufflen, elf64_file_t *
   file->section_headers_count = file->header.e_shnum;
   memcpy(&file->section_headers, buffer + file->header.e_shoff, file->section_headers_count * sizeof(file->section_headers[0]));
 
-
   return 0;
 }
