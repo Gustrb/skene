@@ -15,7 +15,7 @@ kanban-plugin: board
 
 ## In Progress
 
-- [ ] Toolchain: Implement `readelf -e` in the [[tools/elfview/main.c]]
+- [ ] Toolchain: Implement `readelf -h` in the [[tools/elfview/main.c]]
 
 
 ## Done
