@@ -24,7 +24,8 @@ typedef struct {
 	uint64_t flags;
 } cli_opts_t;
 
-#define CLI_PRINT_HEADERS 0x1
+#define CLI_PRINT_HEADERS (0x1 << 0)
+#define CLI_PRINT_SECTION_HEADERS (0x1 << 1)
 
 typedef struct {
 	char *ptr;
@@ -45,6 +46,7 @@ typedef struct {
 } string_view_t;
 
 PRIVATE string_view_t print_header_flag = {.items="h", .lenght=1, .position=0};
+PRIVATE string_view_t print_section_header_flag = {.items="S", .lenght=1, .position=0};
 
 #define SLICE_ADVANCE(s) (s).position++
 #define SLICE_LOOKUP(s) (s).items[(s).position]
@@ -56,6 +58,7 @@ PRIVATE cli_error_t cli_mmap_file(cli_opts_t *env, mmap_file_t *);
 PRIVATE cli_error_t cli_unmap_file(mmap_file_t *);
 PRIVATE void cli_pretty_print_elf64_file(cli_opts_t *env, elf64_file_t *file);
 PRIVATE void cli_pretty_print_elf64_headers(cli_opts_t *env, elf64_header_t *header);
+PRIVATE void cli_pretty_print_elf64_section_headers(cli_opts_t *env, elf64_file_t *file);
 
 PRIVATE uint8_t string_view_equals(string_view_t a, string_view_t b);
 
@@ -86,6 +89,7 @@ int main(int argc, const char **argv)
   cli_pretty_print_elf64_file(&env, &elf_content);
 
 	cli_unmap_file(&file);
+	free(elf_content.shstrtab);
 	return 0;
 }
 
@@ -94,6 +98,11 @@ PRIVATE void cli_pretty_print_elf64_file(cli_opts_t *env, elf64_file_t *file)
 	if ((env->flags & CLI_PRINT_HEADERS) != 0)
 	{
 		cli_pretty_print_elf64_headers(env, &file->header);
+	}
+
+	if ((env->flags & CLI_PRINT_SECTION_HEADERS) != 0)
+	{
+		cli_pretty_print_elf64_section_headers(env, file);
 	}
 }
 
@@ -153,8 +162,20 @@ PRIVATE void cli_pretty_print_elf64_headers(cli_opts_t *env, elf64_header_t *hea
 	printf("\tSize of the section headers: \t%d (bytes)\n", header->e_shentsize);
 	printf("\tNumber of section headers: \t%d\n", header->e_shnum);
 	printf("\tIndex into the table of the section chain:\t %d\n", header->e_shstrndx);
+}
 
-	return;
+PRIVATE void cli_pretty_print_elf64_section_headers(cli_opts_t *env, elf64_file_t *file)
+{
+	UNUSED(env);
+
+	printf("There are %d section headers, starting at offset 0x%lx\n\n", file->header.e_shnum, file->header.e_shoff);
+	printf("Section headers:\n");
+
+	for (elf64_word_t i = 0; i < file->section_headers_count; ++i)
+	{
+		elf64_section_header_t *header = &file->section_headers[i];
+		printf("[%d] %s\n", i, file->shstrtab + header->sh_name);
+	}
 }
 
 uint8_t string_starts_with(const char *cstr, size_t len, const char *s)
@@ -199,6 +220,11 @@ PRIVATE cli_error_t cli_parse_arguments(int argc, const char **argv, cli_opts_t 
 			if (string_view_equals(sv, print_header_flag))
 			{
 				env->flags |= CLI_PRINT_HEADERS;
+				SLICE_ADVANCE(window);
+			}
+			else if (string_view_equals(sv, print_section_header_flag))
+			{
+				env->flags |= CLI_PRINT_SECTION_HEADERS;
 				SLICE_ADVANCE(window);
 			}
 			else

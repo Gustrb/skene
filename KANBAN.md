@@ -10,7 +10,6 @@ kanban-plugin: board
 - [ ] Read Books 1-3 of The Iliad
 - [ ] Math: Proving the Limit Definition (The "Strictest Setting")
 - [ ] German: Memorize "The 4 Cases" table
-- [ ] Toolchain Implement `readelf -S` in the [[tools/elfview/main.c]]
 
 
 ## In Progress
@@ -19,6 +18,7 @@ kanban-plugin: board
 
 ## Done
 
+- [ ] Toolchain Implement `readelf -S` in the [[tools/elfview/main.c]]
 - [ ] Toolchain: Implement `readelf -h` in the [[tools/elfview/main.c]]
 - [ ] Coding: Implement `ehdr` parser (ELF Reader)
 - [x] Finished Book of Proofs
