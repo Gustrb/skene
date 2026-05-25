@@ -110,6 +110,9 @@
 // i.e. ...
 #define SKENE_ELF_TYPE_HIPROC 0xFFFF
 
+// List of machines https://gist.github.com/x0nu11byt3/bcb35c3de461e5fb66173071a2379779
+#define SKENE_ELF_MACHINE_AMD_X86_64 62
+
 typedef uint16_t elf64_half_t;
 typedef uint32_t elf64_word_t;
 typedef uint64_t elf64_addr_t;

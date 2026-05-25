@@ -15,11 +15,11 @@ kanban-plugin: board
 
 ## In Progress
 
-- [ ] Toolchain: Implement `readelf -h` in the [[tools/elfview/main.c]]
 
 
 ## Done
 
+- [ ] Toolchain: Implement `readelf -h` in the [[tools/elfview/main.c]]
 - [ ] Coding: Implement `ehdr` parser (ELF Reader)
 - [x] Finished Book of Proofs
 - [ ] Research ELF64 Program Header types (PT_LOAD, etc)
