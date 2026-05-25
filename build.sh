@@ -11,7 +11,7 @@ echo "Building with: $CFLAGS"
 mkdir -p build
 
 # 1. Build the ELF View tool
-$CC $CFLAGS tools/elfview/main.c -o build/elfview $INCLUDES
+$CC $CFLAGS tools/elfview/main.c -o build/elfview tools/elfview/elf.c $INCLUDES
 
 echo "Build successful."
 
