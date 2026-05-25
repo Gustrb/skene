@@ -187,6 +187,8 @@ typedef struct {
 typedef struct {
   elf64_header_t header;
 
+  char *shstrtab;
+
   elf64_section_header_t section_headers[SKENE_ELF_MAX_SECTION_HEADERS];
   elf64_word_t section_headers_count;
 } elf64_file_t;

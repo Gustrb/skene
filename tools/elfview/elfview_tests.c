@@ -33,6 +33,7 @@ int main(void)
   __assert_elf64_section_header_data(&file);
 
   free(fixture);
+  free(file.shstrtab);
   TEST_FINISH();
   return 0;
 }
