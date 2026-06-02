@@ -57,7 +57,7 @@ PRIVATE cli_error_t cli_parse_arguments(int argc, const char **argv, cli_opts_t 
 PRIVATE cli_error_t cli_mmap_file(cli_opts_t *env, mmap_file_t *);
 PRIVATE cli_error_t cli_unmap_file(mmap_file_t *);
 PRIVATE void cli_pretty_print_elf64_file(cli_opts_t *env, elf64_file_t *file);
-PRIVATE void cli_pretty_print_elf64_headers(cli_opts_t *env, elf64_header_t *header);
+PRIVATE void cli_pretty_print_elf64_headers(cli_opts_t *env, const elf64_header_t *header);
 PRIVATE void cli_pretty_print_elf64_section_headers(cli_opts_t *env, elf64_file_t *file);
 
 PRIVATE uint8_t string_view_equals(string_view_t a, string_view_t b);
@@ -80,16 +80,17 @@ int main(int argc, const char **argv)
 	}
 
 	elf64_file_t elf_content = {0};
-  int elf_err = elf64_parse_buffer(file.ptr, file.len, &elf_content);
-  if (elf_err != 0)
+  elf64_error_t elf_err = elf64_parse_buffer(file.ptr, file.len, &elf_content);
+  if (elf_err != ELF64_OK)
   {
+  	fprintf(stderr, "failed to parse ELF file: %s\n", elf64_strerror(elf_err));
+  	cli_unmap_file(&file);
   	return 1;
   }
 
   cli_pretty_print_elf64_file(&env, &elf_content);
 
 	cli_unmap_file(&file);
-	free(elf_content.shstrtab);
 	return 0;
 }
 
@@ -97,7 +98,7 @@ PRIVATE void cli_pretty_print_elf64_file(cli_opts_t *env, elf64_file_t *file)
 {
 	if ((env->flags & CLI_PRINT_HEADERS) != 0)
 	{
-		cli_pretty_print_elf64_headers(env, &file->header);
+		cli_pretty_print_elf64_headers(env, file->header);
 	}
 
 	if ((env->flags & CLI_PRINT_SECTION_HEADERS) != 0)
@@ -115,7 +116,7 @@ PRIVATE const char *elf64_header_type_str[CLI_NUM_HEADER_TYPES] = {
 	"CORE"
 };
 
-PRIVATE void cli_pretty_print_elf64_headers(cli_opts_t *env, elf64_header_t *header)
+PRIVATE void cli_pretty_print_elf64_headers(cli_opts_t *env, const elf64_header_t *header)
 {
 	UNUSED(env);
 
@@ -168,13 +169,13 @@ PRIVATE void cli_pretty_print_elf64_section_headers(cli_opts_t *env, elf64_file_
 {
 	UNUSED(env);
 
-	printf("There are %d section headers, starting at offset 0x%lx\n\n", file->header.e_shnum, file->header.e_shoff);
+	printf("There are %d section headers, starting at offset 0x%lx\n\n", file->header->e_shnum, file->header->e_shoff);
 	printf("Section headers:\n");
 
 	for (elf64_word_t i = 0; i < file->section_headers_count; ++i)
 	{
-		elf64_section_header_t *header = &file->section_headers[i];
-		printf("[%d] %s\n", i, file->shstrtab + header->sh_name);
+		const elf64_section_header_t *header = &file->section_headers[i];
+		printf("[%d] %s\n", i, elf64_section_name(file, header));
 	}
 }
 
