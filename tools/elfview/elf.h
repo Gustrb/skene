@@ -181,18 +181,95 @@ typedef struct {
 #define SKENE_ELF_SECTION_HEADER_TYPE_LOPROC 0x70000000
 #define SKENE_ELF_SECTION_HEADER_TYPE_HIPROC 0x7FFFFFFF
 
+// Section contains writable data
+#define SKENE_ELF_SECTION_HEADER_FLAG_SHF_WRITE 0x1
+// Section is allocated in memory image of program
+#define SKENE_ELF_SECTION_HEADER_FLAG_SHF_ALLOC 0x2
+// Section contains executable instructions
+#define SKENE_ELF_SECTION_HEADER_FLAG_SHF_EXECINSTR 0x4
+// Environment-specific use
+#define SKENE_ELF_SECTION_HEADER_FLAG_SHF_MASKOS 0x0F000000
+// Processor-specific use
+#define SKENE_ELF_SECTION_HEADER_FLAG_SHF_MASKPROC 0xF0000000
+
+typedef struct {
+  // type of segment
+  elf64_word_t p_type;
+  // segment attributes
+  elf64_word_t p_flags;
+  // offset in file
+  elf64_off_t p_offset;
+  // virtual address in memory
+  elf64_addr_t p_vaddr;
+  // reserved
+  elf64_addr_t p_paddr;
+  // size of segument in file
+  elf64_xword_t p_filesz;
+  // size of segment in memory
+  elf64_xword_t p_memsz;
+  // alignment of segment
+  elf64_xword_t p_align;
+} elf64_program_header_t;
+
+#define SKENE_ELF_PROGRAM_HEADER_TYPE_NULL 0
+#define SKENE_ELF_PROGRAM_HEADER_TYPE_LOAD 1
+#define SKENE_ELF_PROGRAM_HEADER_TYPE_DYNAMIC 2
+#define SKENE_ELF_PROGRAM_HEADER_TYPE_INTERP 3
+#define SKENE_ELF_PROGRAM_HEADER_TYPE_NOTE 4
+#define SKENE_ELF_PROGRAM_HEADER_TYPE_SHLIB 5
+#define SKENE_ELF_PROGRAM_HEADER_TYPE_PHDR 6
+#define SKENE_ELF_PROGRAM_HEADER_TYPE_LOOS 0x60000000
+#define SKENE_ELF_PROGRAM_HEADER_TYPE_HIOS 0x6FFFFFFF
+#define SKENE_ELF_PROGRAM_HEADER_TYPE_LOPROC 0x70000000
+#define SKENE_ELF_PROGRAM_HEADER_TYPE_HIPROC 0x7FFFFFFF
+
 
 #define SKENE_ELF_MAX_SECTION_HEADERS 65535
 
+// elf64_file_t is a *zero-copy view* over a buffer (typically an mmap'd file).
+// None of the pointers below are owned: they point directly into `base`, which
+// must outlive the elf64_file_t. There is nothing to free.
 typedef struct {
-  elf64_header_t header;
+  const char *base; /* The backing buffer the file was parsed from */
+  size_t len;       /* Size of the backing buffer, in bytes */
 
-  char *shstrtab;
+  const elf64_header_t *header; /* -> base + 0 */
 
-  elf64_section_header_t section_headers[SKENE_ELF_MAX_SECTION_HEADERS];
-  elf64_word_t section_headers_count;
+  const elf64_section_header_t *section_headers; /* -> base + header->e_shoff */
+  elf64_half_t section_headers_count;
+
+  const elf64_program_header_t *program_headers;
+  elf64_half_t program_headers_count;
+
+  const char *shstrtab;  /* Section-header string table -> base + sh_offset */
+  size_t shstrtab_size;  /* Size of the string table, in bytes */
 } elf64_file_t;
 
-PUBLIC int elf64_parse_buffer(const char *buffer, size_t bufflen, elf64_file_t *file);
+typedef enum {
+  ELF64_OK = 0,
+  // The buffer is smaller than the ELF header.
+  ELF64_ERR_TRUNCATED,
+  // header->e_shnum is at/above SKENE_ELF_MAX_SECTION_HEADERS.
+  ELF64_ERR_TOO_MANY_SECTIONS,
+  // header->e_shentsize does not match sizeof(elf64_section_header_t).
+  ELF64_ERR_BAD_SHENTSIZE,
+  // The section header table extends past the end of the buffer.
+  ELF64_ERR_SECTIONS_OUT_OF_BOUNDS,
+  // header->e_shstrndx does not point at a valid section header.
+  ELF64_ERR_BAD_SHSTRNDX,
+  // The section-header string table extends past the end of the buffer.
+  ELF64_ERR_SHSTRTAB_OUT_OF_BOUNDS,
+} elf64_error_t;
+
+// Parses `buffer` (which must remain valid for the lifetime of *file) into a
+// zero-copy view. Returns ELF64_OK on success or an elf64_error_t on failure.
+PUBLIC elf64_error_t elf64_parse_buffer(const char *buffer, size_t bufflen, elf64_file_t *file);
+
+// Returns a human-readable, static string for an elf64_error_t.
+PUBLIC const char *elf64_strerror(elf64_error_t err);
+
+// Returns the name of `section` as a NUL-terminated string into the string
+// table, or "" if the name offset is out of bounds.
+PUBLIC const char *elf64_section_name(const elf64_file_t *file, const elf64_section_header_t *section);
 
 #endif
