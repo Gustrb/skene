@@ -149,6 +149,9 @@ int main(int argc, const char **argv)
 
 PRIVATE void print_file(const char *path)
 {
+  printf("\033[2J");
+  printf("\033[H");
+
   FILE *f = fopen(path, "r");
   if (f == NULL)
   {
