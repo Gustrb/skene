@@ -55,14 +55,13 @@ PUBLIC int32_t string_builder_into_owned_cstr(string_builder_t *b, const char **
   return 0;
 }
 
-PUBLIC int32_t string_builder_append_cstr(string_builder_t *builder, const char *cstr)
+PRIVATE int32_t string_builder_ensure_capacity(string_builder_t *builder, size_t cap)
 {
-  size_t cstr_len = strlen(cstr);
 
-  if (builder->capacity - builder->length < cstr_len)
+  if (builder->capacity - builder->length < cap)
   {
     size_t new_cap = builder->capacity ? builder->capacity : 1;
-    while (new_cap - builder->length < cstr_len)
+    while (new_cap - builder->length < cap)
     {
       new_cap *= 2;
     }
@@ -77,8 +76,33 @@ PUBLIC int32_t string_builder_append_cstr(string_builder_t *builder, const char 
     builder->capacity = new_cap;
   }
 
+  return 0;
+}
+
+PUBLIC int32_t string_builder_append_cstr(string_builder_t *builder, const char *cstr)
+{
+  size_t cstr_len = strlen(cstr);
+  int32_t err = string_builder_ensure_capacity(builder, cstr_len);
+  if (err != 0)
+  {
+    return err;
+  }
+  
   memcpy(builder->ptr + builder->length, cstr, cstr_len);
   builder->length += cstr_len;
+  return 0;
+}
+
+PUBLIC int32_t string_builder_append_string_view(string_builder_t *builder, string_view_t sv)
+{
+  int32_t err = string_builder_ensure_capacity(builder, sv.length);
+  if (err != 0)
+  {
+    return err;
+  }
+
+  memcpy(builder->ptr + builder->length, sv.addr, sv.length);
+  builder->length += sv.length;
   return 0;
 }
 

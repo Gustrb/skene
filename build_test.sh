@@ -19,6 +19,7 @@ $CC $CFLAGS tools/elfview/elfview_tests.c -o build/elfview_tests tools/elfview/e
 
 # 3. Build the string builder library tests
 $CC $CFLAGS libs/libstrbuilder/strbuilder_tests.c -o build/strbuilder_tests libs/libstrbuilder/strbuilder.c $LIBTESTBIN $INCLUDES
+$CC $CFLAGS libs/libstrview/string_view_tests.c -o build/string_view_tests libs/libstrview/string_view.c $LIBTESTBIN $INCLUDES
 
 echo "Build successful."
 
