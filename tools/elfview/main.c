@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <assert.h>
 
+#include <libstrview/string_view.h>
+
 #include "./elf.h"
 
 typedef enum {
@@ -39,14 +41,9 @@ typedef struct {
 	size_t position;
 } slice_t;
 
-typedef struct {
-	const char *items;
-	size_t lenght;
-	size_t position;	
-} string_view_t;
 
-PRIVATE string_view_t print_header_flag = {.items="h", .lenght=1, .position=0};
-PRIVATE string_view_t print_section_header_flag = {.items="S", .lenght=1, .position=0};
+PRIVATE string_view_t print_header_flag = {.addr="h", .length=1};
+PRIVATE string_view_t print_section_header_flag = {.addr="S", .length=1};
 
 #define SLICE_ADVANCE(s) (s).position++
 #define SLICE_LOOKUP(s) (s).items[(s).position]
@@ -59,8 +56,6 @@ PRIVATE cli_error_t cli_unmap_file(mmap_file_t *);
 PRIVATE void cli_pretty_print_elf64_file(cli_opts_t *env, elf64_file_t *file);
 PRIVATE void cli_pretty_print_elf64_headers(cli_opts_t *env, const elf64_header_t *header);
 PRIVATE void cli_pretty_print_elf64_section_headers(cli_opts_t *env, elf64_file_t *file);
-
-PRIVATE uint8_t string_view_equals(string_view_t a, string_view_t b);
 
 int main(int argc, const char **argv)
 {
@@ -216,7 +211,7 @@ PRIVATE cli_error_t cli_parse_arguments(int argc, const char **argv, cli_opts_t 
 		else
 		{
 			// We know it is a flag and it starts with '-'
-			string_view_t sv = { .items=v, .lenght=len, .position=1 };
+			string_view_t sv = { .addr=v+1, .length=len-1 };
 
 			if (string_view_equals(sv, print_header_flag))
 			{
@@ -288,21 +283,4 @@ PRIVATE cli_error_t cli_unmap_file(mmap_file_t *file)
 	file->ptr = NULL;
 
 	return CLI_ERROR_NO_ERROR;
-}
-
-PRIVATE uint8_t string_view_equals(string_view_t a, string_view_t b)
-{
-
-  size_t siza = SLICE_LENGTH(a);
-  size_t sizb = SLICE_LENGTH(b);
-
-  if (siza != sizb)
-    return 0;
-
-  for (size_t i = 0; i < siza; ++i) {
-    if (a.items[a.position + i] != b.items[b.position + i])
-      return 0;
-	}
-
-	return 1;
 }

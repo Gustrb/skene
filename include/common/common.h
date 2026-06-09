@@ -14,4 +14,8 @@
 #define PUBLIC
 #define PRIVATE static
 
+#define PLATFORM_SPECIFIC(p) p
+
+#define ASSUME(p) do { if (!(p)) PLATFORM_SPECIFIC(__builtin_unreachable()); } while(0);
+
 #endif
