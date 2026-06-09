@@ -9,6 +9,7 @@
 #include <assert.h>
 
 #include <libstrview/string_view.h>
+#include <libstrbuilder/strbuilder.h>
 
 #include "./elf.h"
 
@@ -19,10 +20,11 @@ typedef enum {
   CLI_ERROR_FAILTOSTAT,
   CLI_ERROR_EMPTYFILE,
   CLI_ERROR_FAILTOMAP,
+  CLI_ERROR_NOMEM,
 } cli_error_t;
 
 typedef struct {
-	const char *file_path;
+	string_view_t file_path;
 	uint64_t flags;
 } cli_opts_t;
 
@@ -40,7 +42,6 @@ typedef struct {
 	size_t length;
 	size_t position;
 } slice_t;
-
 
 PRIVATE string_view_t print_header_flag = {.addr="h", .length=1};
 PRIVATE string_view_t print_section_header_flag = {.addr="S", .length=1};
@@ -174,26 +175,6 @@ PRIVATE void cli_pretty_print_elf64_section_headers(cli_opts_t *env, elf64_file_
 	}
 }
 
-uint8_t string_starts_with(const char *cstr, size_t len, const char *s)
-{
-	size_t slen = strlen(s);
-	if (slen > len)
-	{
-		return 0;
-	}
-
-	// Note: probably really easy to SIMD here.
-	for (size_t i = 0; i < slen; ++i)
-	{
-		if (cstr[i] != s[i])
-		{
-			return 0;
-		}
-	}
-
-	return 1;
-}
-
 PRIVATE cli_error_t cli_parse_arguments(int argc, const char **argv, cli_opts_t *env)
 {
 	slice_t window = { .items = argv+1, .length = argc-1, .position=0};
@@ -201,17 +182,18 @@ PRIVATE cli_error_t cli_parse_arguments(int argc, const char **argv, cli_opts_t 
 	while (!SLICE_EMPTY(window))
 	{	
 		const char *v = SLICE_LOOKUP(window);
+		string_view_t sv = string_view_from_cstr(v);
 		size_t len = strlen(v);
 
-		if (!string_starts_with(v, len, "-"))
+		if (!string_view_starts_with_cstr(sv, "-"))
 		{
-			env->file_path = v;
+			env->file_path = sv;
 			SLICE_ADVANCE(window);
 		}
 		else
 		{
 			// We know it is a flag and it starts with '-'
-			string_view_t sv = { .addr=v+1, .length=len-1 };
+			sv.addr = v+1, sv.length = len-1;
 
 			if (string_view_equals(sv, print_header_flag))
 			{
@@ -230,7 +212,7 @@ PRIVATE cli_error_t cli_parse_arguments(int argc, const char **argv, cli_opts_t 
 		}
 	}
 
-	if (env->file_path == NULL)
+	if (env->file_path.length == 0)
 	{
 		return CLI_ERROR_NOPATH;
 	}
@@ -240,7 +222,26 @@ PRIVATE cli_error_t cli_parse_arguments(int argc, const char **argv, cli_opts_t 
 
 PRIVATE cli_error_t cli_mmap_file(cli_opts_t *env, mmap_file_t *file)
 {
-	int file_descriptor = open(env->file_path, O_RDONLY);
+	string_builder_t builder = {0};
+	int32_t err = string_builder_new_with_capacity(&builder, env->file_path.length);
+	if (err != 0)
+	{
+		return CLI_ERROR_NOMEM;
+	}
+
+	string_builder_append_string_view_unchecked(&builder, env->file_path);
+
+	const char *file_path_cstr = NULL;
+	err = string_builder_into_owned_cstr(&builder, &file_path_cstr);
+	if (err != 0)
+	{
+		string_builder_destroy(&builder);
+		return CLI_ERROR_NOMEM;
+	}
+
+	int file_descriptor = open(file_path_cstr, O_RDONLY);
+	string_builder_destroy(&builder);
+	free((void*)file_path_cstr);
 	if (file_descriptor < 0)
 	{
 		return CLI_ERROR_FAILTOOPEN;
