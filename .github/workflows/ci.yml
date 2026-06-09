@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc
+
+      - name: Build
+        run: ./build.sh
+
+      - name: Build tests
+        run: ./build_test.sh
+
+      - name: Run tests
+        run: |
+          set -e
+          for t in build/elfview_tests build/strbuilder_tests build/string_view_tests; do
+            echo "=== Running $t ==="
+            "$t"
+          done

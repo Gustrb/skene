@@ -17,7 +17,7 @@ $CC $CFLAGS libs/libstrbuilder/strbuilder.c -c -o $LIBSTRBUILDER $INCLUDES
 $CC $CFLAGS libs/libstrview/string_view.c -c -o $LIBSTRVIEW $INCLUDES
 
 # 1. Build the ELF View tool
-$CC $CFLAGS tools/elfview/main.c -o build/elfview tools/elfview/elf.c $LIBSTRVIEW $INCLUDES
+$CC $CFLAGS tools/elfview/main.c -o build/elfview tools/elfview/elf.c $LIBSTRVIEW $LIBSTRBUILDER $INCLUDES
 $CC $CFLAGS tools/asm-explorer/main.c -o build/asm-explorer $LIBSTRBUILDER $INCLUDES
 
 echo "Build successful."
