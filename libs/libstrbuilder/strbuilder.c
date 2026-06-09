@@ -93,6 +93,12 @@ PUBLIC int32_t string_builder_append_cstr(string_builder_t *builder, const char 
   return 0;
 }
 
+PUBLIC void string_builder_append_string_view_unchecked(string_builder_t *builder, string_view_t sv)
+{
+  memcpy(builder->ptr + builder->length, sv.addr, sv.length);
+  builder->length += sv.length;
+}
+
 PUBLIC int32_t string_builder_append_string_view(string_builder_t *builder, string_view_t sv)
 {
   int32_t err = string_builder_ensure_capacity(builder, sv.length);
