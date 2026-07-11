@@ -26,4 +26,6 @@ PUBLIC string_view_t string_view_from_cstr(const char *a);
 PUBLIC string_view_split_iter_t string_view_split(string_view_t a, char sep);
 PUBLIC string_view_t string_view_split_iter_next(string_view_split_iter_t *svsi);
 
+#define string_view_empty() ((string_view_t){.addr="", .length=0})
+
 #endif
