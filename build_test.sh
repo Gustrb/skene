@@ -21,5 +21,8 @@ $CC $CFLAGS tools/elfview/elfview_tests.c -o build/elfview_tests tools/elfview/e
 $CC $CFLAGS libs/libstrbuilder/strbuilder_tests.c -o build/strbuilder_tests libs/libstrbuilder/strbuilder.c $LIBTESTBIN $INCLUDES
 $CC $CFLAGS libs/libstrview/string_view_tests.c -o build/string_view_tests libs/libstrview/string_view.c $LIBTESTBIN $INCLUDES
 
+# 4. Build the arena library tests
+$CC $CFLAGS libs/libarena/arena_tests.c -o build/arena_tests libs/libarena/arena.c $LIBTESTBIN $INCLUDES
+
 echo "Build successful."
 
