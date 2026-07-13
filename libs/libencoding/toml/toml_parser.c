@@ -46,15 +46,10 @@ int32_t toml_parser_parse(toml_parser_t *parser, void *ctx, toml_parser_on_key_v
   __toml_lexer_t l = {0};
   __toml_lexer_new(&l, parser->file);
   __toml_token_t token = {.value = string_view_empty(), .type = __TOML_TOKEN_TYPE_NONE };
-  int32_t err = 0;
 
   while (1)
   {
-    err = __toml_lexer_next_token(&l, &token);     
-    if (err != 0)
-    {
-      return err;
-    }
+    TRY(__toml_lexer_next_token(&l, &token));     
     if (token.type == __TOML_TOKEN_TYPE_EOF)
     {
       break;
@@ -64,7 +59,7 @@ int32_t toml_parser_parse(toml_parser_t *parser, void *ctx, toml_parser_on_key_v
     {
     case __TOML_TOKEN_TYPE_LBRACKET:
     {
-      err = __toml_parser_parse_tablename(parser, &l, ctx, on_table);
+      int32_t err = __toml_parser_parse_tablename(parser, &l, ctx, on_table);
       if (err == TOML_PARSER_STOP)
       {
         return 0;
@@ -101,11 +96,7 @@ int32_t toml_parser_parse(toml_parser_t *parser, void *ctx, toml_parser_on_key_v
 int32_t __toml_parser_parse_tablename(toml_parser_t *p, __toml_lexer_t *lexer, void *ctx, toml_parser_on_table on_table)
 {
   __toml_token_t token = {0};
-  int32_t err = __toml_lexer_next_token(lexer, &token);
-  if (err != 0)
-  {
-    return err;
-  }
+  TRY(__toml_lexer_next_token(lexer, &token));
   if (token.type != __TOML_TOKEN_TYPE_IDENTIFIER)
   {
     UNUSED(p);
@@ -120,11 +111,7 @@ int32_t __toml_parser_parse_tablename(toml_parser_t *p, __toml_lexer_t *lexer, v
     return TOML_PARSER_STOP;
   }
 
-  err = __toml_lexer_next_token(lexer, &token);
-  if (err != 0)
-  {
-    return err;
-  }
+  TRY(__toml_lexer_next_token(lexer, &token));
   if (token.type != __TOML_TOKEN_TYPE_RBRACKET)
   {
     UNUSED(p);

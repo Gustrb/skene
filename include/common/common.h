@@ -18,4 +18,6 @@
 
 #define ASSUME(p) do { if (!(p)) PLATFORM_SPECIFIC(__builtin_unreachable()); } while(0);
 
+#define TRY(c) do { int32_t err = c; if (err != 0) return err; } while (0);
+
 #endif
