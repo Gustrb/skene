@@ -25,7 +25,7 @@ jobs:
       - name: Run tests
         run: |
           set -e
-          for t in build/elfview_tests build/strbuilder_tests build/string_view_tests build/arena_tests; do
+          for t in build/elfview_tests build/strbuilder_tests build/string_view_tests build/arena_tests build/toml_parser_tests; do
             echo "=== Running $t ==="
             "$t"
           done

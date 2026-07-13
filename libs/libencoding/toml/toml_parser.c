@@ -5,6 +5,7 @@ void toml_parser_new(toml_parser_t *p, string_view_t file)
 {
   p->file = file;
   p->offset = 0;
+  p->__diagnostics_len = 0;
 }
 
 typedef struct {
@@ -12,6 +13,9 @@ typedef struct {
   size_t position;
   size_t read_position;
   char ch;
+
+  size_t line;
+  size_t column;
 } __toml_lexer_t;
 
 typedef enum {
@@ -27,17 +31,21 @@ typedef enum {
 typedef struct {
   string_view_t value;
   __toml_token_type_t type;
+
+  size_t line;
+  size_t column;
 } __toml_token_t;
 
-uint8_t __is_letter(char c);
+PRIVATE uint8_t __is_letter(char c);
 
-void __toml_lexer_new(__toml_lexer_t *lexer, string_view_t file);
-void __toml_lexer_read_char(__toml_lexer_t *lexer);
-void __toml_lexer_skip_whitespace(__toml_lexer_t *lexer);
-int32_t __toml_lexer_next_token(__toml_lexer_t *lexer, __toml_token_t *t);
-void  __toml_lexer_read_name(__toml_lexer_t *lexer, string_view_t *name);
+PRIVATE void __toml_lexer_new(__toml_lexer_t *lexer, string_view_t file);
+PRIVATE void __toml_lexer_read_char(__toml_lexer_t *lexer);
+PRIVATE void __toml_lexer_skip_whitespace(__toml_lexer_t *lexer);
+PRIVATE int32_t __toml_lexer_next_token(__toml_lexer_t *lexer, __toml_token_t *t);
+PRIVATE void  __toml_lexer_read_name(__toml_lexer_t *lexer, string_view_t *name);
 
-int32_t __toml_parser_parse_tablename(toml_parser_t *p, __toml_lexer_t *, void *ctx, toml_parser_on_table on_table);
+PRIVATE int32_t __toml_parser_parse_tablename(toml_parser_t *p, __toml_lexer_t *, void *ctx, toml_parser_on_table on_table);
+PRIVATE int32_t __toml_parser_emit_diagnostic(toml_parser_t *p, __toml_parser_diagnostic_t diagnostic);
 
 #define TOML_PARSER_STOP 0xff
 
@@ -46,15 +54,10 @@ int32_t toml_parser_parse(toml_parser_t *parser, void *ctx, toml_parser_on_key_v
   __toml_lexer_t l = {0};
   __toml_lexer_new(&l, parser->file);
   __toml_token_t token = {.value = string_view_empty(), .type = __TOML_TOKEN_TYPE_NONE };
-  int32_t err = 0;
 
   while (1)
   {
-    err = __toml_lexer_next_token(&l, &token);     
-    if (err != 0)
-    {
-      return err;
-    }
+    TRY(__toml_lexer_next_token(&l, &token));     
     if (token.type == __TOML_TOKEN_TYPE_EOF)
     {
       break;
@@ -64,7 +67,7 @@ int32_t toml_parser_parse(toml_parser_t *parser, void *ctx, toml_parser_on_key_v
     {
     case __TOML_TOKEN_TYPE_LBRACKET:
     {
-      err = __toml_parser_parse_tablename(parser, &l, ctx, on_table);
+      int32_t err = __toml_parser_parse_tablename(parser, &l, ctx, on_table);
       if (err == TOML_PARSER_STOP)
       {
         return 0;
@@ -81,8 +84,12 @@ int32_t toml_parser_parse(toml_parser_t *parser, void *ctx, toml_parser_on_key_v
     }; break;
     case __TOML_TOKEN_TYPE_RBRACKET:
     {
-      // TODO: show failure properly, keys can't start with a ']' and
-      // this token should only appear in the context of a table, so it should already have been parsed
+      TRY(__toml_parser_emit_diagnostic(parser, (__toml_parser_diagnostic_t){
+                                    .line = token.line,
+                                    .column = token.column,
+                                    .error_message = string_view_from_cstr("error: no TOML token starts with a ']'."),
+                                  }));
+      return TOML_PARSER_ERROR;
     }; break;
     case __TOML_TOKEN_TYPE_NONE:
     {
@@ -101,15 +108,14 @@ int32_t toml_parser_parse(toml_parser_t *parser, void *ctx, toml_parser_on_key_v
 int32_t __toml_parser_parse_tablename(toml_parser_t *p, __toml_lexer_t *lexer, void *ctx, toml_parser_on_table on_table)
 {
   __toml_token_t token = {0};
-  int32_t err = __toml_lexer_next_token(lexer, &token);
-  if (err != 0)
-  {
-    return err;
-  }
+  TRY(__toml_lexer_next_token(lexer, &token));
   if (token.type != __TOML_TOKEN_TYPE_IDENTIFIER)
   {
-    UNUSED(p);
-    // TODO: implement error reporting
+    TRY(__toml_parser_emit_diagnostic(p, (__toml_parser_diagnostic_t){
+                                      .line=token.line,
+                                      .column=token.column,
+                                      .error_message = string_view_from_cstr("error: broken tablename, an identifier should follow the opening bracket"),
+                                    }));
     return TOML_PARSER_ERROR;
   }
 
@@ -120,15 +126,15 @@ int32_t __toml_parser_parse_tablename(toml_parser_t *p, __toml_lexer_t *lexer, v
     return TOML_PARSER_STOP;
   }
 
-  err = __toml_lexer_next_token(lexer, &token);
-  if (err != 0)
-  {
-    return err;
-  }
+  TRY(__toml_lexer_next_token(lexer, &token));
   if (token.type != __TOML_TOKEN_TYPE_RBRACKET)
   {
-    UNUSED(p);
-    // TODO: implement error handling
+
+    TRY(__toml_parser_emit_diagnostic(p, (__toml_parser_diagnostic_t){
+                                      .line=token.line,
+                                      .column=token.column,
+                                      .error_message = string_view_from_cstr("error: broken tablename, a closing bracket should follow the tablename"),
+                                    }));
     return TOML_PARSER_ERROR;
   }
   return 0;
@@ -140,11 +146,23 @@ void __toml_lexer_new(__toml_lexer_t *lexer, string_view_t file)
   lexer->position = 0;
   lexer->read_position = 0;
   lexer->ch = 0;
+  lexer->column = 1;
+  lexer->line = 1;
   __toml_lexer_read_char(lexer);
 }
 
 void __toml_lexer_read_char(__toml_lexer_t *lexer)
 {
+  if (lexer->ch == '\n')
+  {
+    lexer->line++;
+    lexer->column = 1;
+  }
+  else if (lexer->ch != '\0')
+  {
+    lexer->column++;
+  }
+
   if (lexer->read_position >= lexer->input.length)
   {
     lexer->ch = 0;
@@ -152,6 +170,7 @@ void __toml_lexer_read_char(__toml_lexer_t *lexer)
   else
   {
     lexer->ch = lexer->input.addr[lexer->read_position];
+
   }
 
   lexer->position = lexer->read_position;
@@ -165,18 +184,19 @@ int32_t __toml_lexer_next_token(__toml_lexer_t *lexer, __toml_token_t *tok)
 
   __toml_lexer_skip_whitespace(lexer);
 
+  tok->line = lexer->line;
+  tok->column = lexer->column;
+
   switch (lexer->ch)
   {
   case '[':
   {
     tok->type  = __TOML_TOKEN_TYPE_LBRACKET;
-    // TODO: maybe we could just build it from lexer->input, but that would be annoying...
     tok->value = string_view_from_cstr("[");
   }; break; 
   case ']':
   {
     tok->type  = __TOML_TOKEN_TYPE_RBRACKET;
-    // TODO: maybe we could just build it from lexer->input, but that would be annoying...
     tok->value = string_view_from_cstr("]");
   }; break; 
   case 0:
@@ -223,4 +243,15 @@ void __toml_lexer_skip_whitespace(__toml_lexer_t *lexer)
 uint8_t __is_letter(char c)
 {
   return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z');
+}
+
+PRIVATE int32_t __toml_parser_emit_diagnostic(toml_parser_t *p, __toml_parser_diagnostic_t diagnostic)
+{
+  if (p->__diagnostics_len >= __TOML_PARSER_MAX_ERRORS)
+  {
+    return TOML_ERR_TOO_MANY_DIAGNOSTICS;
+  }
+
+  p->__diagnostics[p->__diagnostics_len++] = diagnostic;
+  return 0;
 }
