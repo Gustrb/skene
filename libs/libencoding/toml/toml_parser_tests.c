@@ -9,7 +9,7 @@ PRIVATE void __toml_parser_should_identify_errors_when_parsing_tables(void);
 
 int main(void)
 {
-  TEST_START(12);
+  TEST_START(23);
 
   __toml_parser_new_should_be_able_to_instantiate_a_new_toml_parser();
   __toml_parser_should_be_able_to_parse_tables();
@@ -65,9 +65,19 @@ PRIVATE void __toml_parser_should_be_able_to_parse_tables(void)
   ASSERT_BOOL(string_view_equals(context.tablenames[0], string_view_from_cstr("tabledata")), "it should parse the tablename correctly");
 }
 
+PRIVATE void __toml_parser_should_identify_missing_tablename(void);
+PRIVATE void __toml_parser_should_identify_missing_closing_bracket(void);
+PRIVATE void __toml_parser_should_identify_token_starting_with_a_closing_bracket(void);
+
 PRIVATE void __toml_parser_should_identify_errors_when_parsing_tables(void)
 {
-  
+  __toml_parser_should_identify_missing_tablename();
+  __toml_parser_should_identify_missing_closing_bracket();
+  __toml_parser_should_identify_token_starting_with_a_closing_bracket();
+}
+
+PRIVATE void __toml_parser_should_identify_missing_tablename(void)
+{
   toml_parser_t p = {0};
   string_view_t file = string_view_from_cstr("[");
   toml_parser_new(&p, file);
@@ -83,4 +93,43 @@ PRIVATE void __toml_parser_should_identify_errors_when_parsing_tables(void)
   ASSERT_BOOL(string_view_equals(diagnostic.error_message, string_view_from_cstr("error: broken tablename, an identifier should follow the opening bracket")), "the error message should match");
   ASSERT_INT_EQ(1, diagnostic.line, "it should correctly track the line of each diagnostic");
   ASSERT_INT_EQ(2, diagnostic.column, "it should correctly track the column of each diagnostic");
+}
+
+PRIVATE void __toml_parser_should_identify_missing_closing_bracket(void)
+{
+  toml_parser_t p = {0};
+  string_view_t file = string_view_from_cstr("[tabledata");
+  toml_parser_new(&p, file);
+
+  toml_parsed_file context = {0};
+  int32_t err = toml_parser_parse(&p, (void *)&context, NULL, __toml_parser_on_table);
+
+  ASSERT_INT_EQ(TOML_PARSER_ERROR, err, "there should be errors when parsing an invalid, missing closing bracket tablename TOML");
+  ASSERT_INT_EQ(1, p.__diagnostics_len, "there should be one diagnostic after parsing it");
+
+  __toml_parser_diagnostic_t diagnostic = p.__diagnostics[0];
+
+  ASSERT_BOOL(string_view_equals(diagnostic.error_message, string_view_from_cstr("error: broken tablename, a closing bracket should follow the tablename")), "the error message should match");
+  ASSERT_INT_EQ(1, diagnostic.line, "it should correctly track the line of each diagnostic");
+  ASSERT_INT_EQ(11, diagnostic.column, "it should correctly track the column of each diagnostic");
+}
+
+PRIVATE void __toml_parser_should_identify_token_starting_with_a_closing_bracket(void)
+{
+  
+  toml_parser_t p = {0};
+  string_view_t file = string_view_from_cstr("]");
+  toml_parser_new(&p, file);
+
+  toml_parsed_file context = {0};
+  int32_t err = toml_parser_parse(&p, (void *)&context, NULL, __toml_parser_on_table);
+
+  ASSERT_INT_EQ(TOML_PARSER_ERROR, err, "there should be errors when parsing an invalid, tablename-starting-with-bracket TOML");
+  ASSERT_INT_EQ(1, p.__diagnostics_len, "there should be one diagnostic after parsing it");
+
+  __toml_parser_diagnostic_t diagnostic = p.__diagnostics[0];
+
+  ASSERT_BOOL(string_view_equals(diagnostic.error_message, string_view_from_cstr("error: no TOML token starts with a ']'.")), "the error message should match");
+  ASSERT_INT_EQ(1, diagnostic.line, "it should correctly track the line of each diagnostic");
+  ASSERT_INT_EQ(1, diagnostic.column, "it should correctly track the column of each diagnostic");
 }

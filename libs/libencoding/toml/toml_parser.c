@@ -84,8 +84,12 @@ int32_t toml_parser_parse(toml_parser_t *parser, void *ctx, toml_parser_on_key_v
     }; break;
     case __TOML_TOKEN_TYPE_RBRACKET:
     {
-      // TODO: show failure properly, keys can't start with a ']' and
-      // this token should only appear in the context of a table, so it should already have been parsed
+      TRY(__toml_parser_emit_diagnostic(parser, (__toml_parser_diagnostic_t){
+                                    .line = token.line,
+                                    .column = token.column,
+                                    .error_message = string_view_from_cstr("error: no TOML token starts with a ']'."),
+                                  }));
+      return TOML_PARSER_ERROR;
     }; break;
     case __TOML_TOKEN_TYPE_NONE:
     {
@@ -125,8 +129,12 @@ int32_t __toml_parser_parse_tablename(toml_parser_t *p, __toml_lexer_t *lexer, v
   TRY(__toml_lexer_next_token(lexer, &token));
   if (token.type != __TOML_TOKEN_TYPE_RBRACKET)
   {
-    UNUSED(p);
-    // TODO: implement error handling
+
+    TRY(__toml_parser_emit_diagnostic(p, (__toml_parser_diagnostic_t){
+                                      .line=token.line,
+                                      .column=token.column,
+                                      .error_message = string_view_from_cstr("error: broken tablename, a closing bracket should follow the tablename"),
+                                    }));
     return TOML_PARSER_ERROR;
   }
   return 0;
