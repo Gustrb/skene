@@ -3,21 +3,23 @@
 
 #include <libtest/test.h>
 
-void __toml_parser_new_should_be_able_to_instantiate_a_new_toml_parser(void);
-void __toml_parser_should_be_able_to_parse_tables(void);
+PRIVATE void __toml_parser_new_should_be_able_to_instantiate_a_new_toml_parser(void);
+PRIVATE void __toml_parser_should_be_able_to_parse_tables(void);
+PRIVATE void __toml_parser_should_identify_errors_when_parsing_tables(void);
 
 int main(void)
 {
-  TEST_START(6);
+  TEST_START(12);
 
   __toml_parser_new_should_be_able_to_instantiate_a_new_toml_parser();
   __toml_parser_should_be_able_to_parse_tables();
+  __toml_parser_should_identify_errors_when_parsing_tables();
 
   TEST_FINISH();
   return 0;
 }
 
-void __toml_parser_new_should_be_able_to_instantiate_a_new_toml_parser(void)
+PRIVATE void __toml_parser_new_should_be_able_to_instantiate_a_new_toml_parser(void)
 {
   toml_parser_t p = {0};
   string_view_t file = string_view_from_cstr("Hello, world!");
@@ -25,6 +27,7 @@ void __toml_parser_new_should_be_able_to_instantiate_a_new_toml_parser(void)
 
   ASSERT_BOOL(string_view_equals(file, p.file), "should assign the file to use the provided string view");
   ASSERT_BOOL(p.offset == 0, "the parser offset should start at 0");
+  ASSERT_BOOL(p.__diagnostics_len == 0, "the parser should have no diagnostics at startup");
 }
 
 #define MAX_TABLENAMES 32
@@ -34,7 +37,7 @@ typedef struct {
   size_t num_tablenames;
 } toml_parsed_file;
 
-toml_parser_state_t __toml_parser_on_table(void *ctx, string_view_t tablename)
+PRIVATE toml_parser_state_t __toml_parser_on_table(void *ctx, string_view_t tablename)
 {
   toml_parsed_file *f = (toml_parsed_file*)ctx;
   ASSERT_BOOL(f->num_tablenames < MAX_TABLENAMES, "we should never have a test that has over than 32 tables");
@@ -49,7 +52,7 @@ toml_parser_state_t __toml_parser_on_table(void *ctx, string_view_t tablename)
   return TOML_PARSER_STATE_KEEPGOING;
 }
 
-void __toml_parser_should_be_able_to_parse_tables(void)
+PRIVATE void __toml_parser_should_be_able_to_parse_tables(void)
 {
   toml_parser_t p = {0};
   string_view_t file = string_view_from_cstr("[tabledata]");
@@ -60,4 +63,24 @@ void __toml_parser_should_be_able_to_parse_tables(void)
   ASSERT_INT_EQ(0, err, "there should be no errors on a valid TOML");
   ASSERT_INT_EQ(1, context.num_tablenames, "we should parse properly a single-tabled TOML");
   ASSERT_BOOL(string_view_equals(context.tablenames[0], string_view_from_cstr("tabledata")), "it should parse the tablename correctly");
+}
+
+PRIVATE void __toml_parser_should_identify_errors_when_parsing_tables(void)
+{
+  
+  toml_parser_t p = {0};
+  string_view_t file = string_view_from_cstr("[");
+  toml_parser_new(&p, file);
+
+  toml_parsed_file context = {0};
+  int32_t err = toml_parser_parse(&p, (void *)&context, NULL, __toml_parser_on_table);
+
+  ASSERT_INT_EQ(TOML_PARSER_ERROR, err, "there should be errors when parsing an invalid TOML");
+  ASSERT_INT_EQ(1, p.__diagnostics_len, "there should be one diagnostic after parsing it");
+
+  __toml_parser_diagnostic_t diagnostic = p.__diagnostics[0];
+
+  ASSERT_BOOL(string_view_equals(diagnostic.error_message, string_view_from_cstr("error: broken tablename, an identifier should follow the opening bracket")), "the error message should match");
+  ASSERT_INT_EQ(1, diagnostic.line, "it should correctly track the line of each diagnostic");
+  ASSERT_INT_EQ(2, diagnostic.column, "it should correctly track the column of each diagnostic");
 }

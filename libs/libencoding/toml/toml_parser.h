@@ -4,9 +4,20 @@
 #include <common/common.h>
 #include <libstrview/string_view.h>
 
+#define __TOML_PARSER_MAX_ERRORS 32
+
+typedef struct {
+  string_view_t error_message;
+  size_t line;
+  size_t column;
+} __toml_parser_diagnostic_t;
+
 typedef struct {
   string_view_t file;
   size_t offset;
+
+  __toml_parser_diagnostic_t __diagnostics[__TOML_PARSER_MAX_ERRORS];
+  size_t __diagnostics_len;
 } toml_parser_t;
 
 typedef struct {
@@ -26,6 +37,7 @@ typedef enum
 } toml_parser_state_t;
 
 #define TOML_PARSER_ERROR 1
+#define TOML_ERR_TOO_MANY_DIAGNOSTICS 2
 
 typedef toml_parser_state_t (*toml_parser_on_key_value_pair)(void *ctx, string_view_t tablename, string_view_t key, toml_value_t value);
 typedef toml_parser_state_t (*toml_parser_on_table)(void *ctx, string_view_t tablename);
