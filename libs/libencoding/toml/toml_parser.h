@@ -14,7 +14,7 @@ typedef struct {
 
 typedef struct {
   string_view_t file;
-  size_t offset;
+  string_view_t curr_tablename;
 
   __toml_parser_diagnostic_t __diagnostics[__TOML_PARSER_MAX_ERRORS];
   size_t __diagnostics_len;

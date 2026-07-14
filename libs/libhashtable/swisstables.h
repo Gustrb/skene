@@ -35,6 +35,8 @@ typedef struct {
 
 #define SW_TABLE_ERR_NOMEM -1
 
+/* `cap` is the desired capacity in elements; it is rounded up internally to a
+   power-of-two number of SW_TABLE_GROUPSIZE-slot groups. */
 int32_t sw_table_init(sw_table_t *table, arena_t *arena, size_t cap);
 int32_t sw_table_find(sw_table_t *table, string_view_t key, void **result);
 int32_t sw_table_insert(sw_table_t *table, string_view_t key, void *val);

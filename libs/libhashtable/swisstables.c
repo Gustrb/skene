@@ -19,11 +19,21 @@ PRIVATE inline uint32_t sw_group_match_empty(const int8_t *control);
 PRIVATE inline uint32_t sw_group_match_deleted(const int8_t *control);
 PRIVATE int32_t sw_table_resize(sw_table_t *table);
 PRIVATE uint64_t sw_hash(string_view_t key);
+PRIVATE int32_t sw_table_init_groups(sw_table_t *table, arena_t *arena, size_t num_groups);
 
 PUBLIC int32_t sw_table_init(sw_table_t *table, arena_t *arena, size_t cap)
 {
-  // triangular probing only holds if the size is a power of 2.
-  size_t capacity = sw_next_power_of_two(cap);
+  // `cap` is the desired capacity in *elements*. Each group holds
+  // SW_TABLE_GROUPSIZE slots, so round the element count up to a whole number
+  // of groups before provisioning the backing arrays.
+  size_t num_groups = (cap + SW_TABLE_GROUPSIZE - 1) / SW_TABLE_GROUPSIZE;
+  return sw_table_init_groups(table, arena, num_groups);
+}
+
+PRIVATE int32_t sw_table_init_groups(sw_table_t *table, arena_t *arena, size_t num_groups)
+{
+  // triangular probing only holds if the group count is a power of 2.
+  size_t capacity = sw_next_power_of_two(num_groups);
 
   // Bump both arrays from the arena. arena_alloc zeroes its result, but an
   // empty control slot is 0x80 (not 0), so the controls still need memset.
@@ -297,14 +307,16 @@ PRIVATE uint64_t sw_hash(string_view_t key)
 PRIVATE int32_t sw_table_resize(sw_table_t *table)
 {
   sw_table_t old = *table;
-  size_t new_cap = (old.dead >= old.resident) ? old.groups_len : old.groups_len * 2;
+  // Resize reasons in group units, so it calls the group-based initializer
+  // directly rather than sw_table_init (which expects an element count).
+  size_t new_groups = (old.dead >= old.resident) ? old.groups_len : old.groups_len * 2;
 
   // The fresh generation is bump-allocated from the same arena; the old one is
   // simply abandoned there (no free). If the arena can't fit either the fresh
   // arrays or the rehash, we fail and leave `table` pointing at the still-valid
   // old generation so the caller sees a clean SW_TABLE_ERR_NOMEM.
   sw_table_t fresh;
-  if (sw_table_init(&fresh, old.arena, new_cap) != 0)
+  if (sw_table_init_groups(&fresh, old.arena, new_groups) != 0)
     return SW_TABLE_ERR_NOMEM;
 
   for (size_t g = 0; g < old.groups_len; ++g)

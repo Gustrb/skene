@@ -4,7 +4,7 @@
 void toml_parser_new(toml_parser_t *p, string_view_t file)
 {
   p->file = file;
-  p->offset = 0;
+  p->curr_tablename = string_view_empty();
   p->__diagnostics_len = 0;
 }
 
@@ -22,6 +22,7 @@ typedef enum {
   __TOML_TOKEN_TYPE_NONE = 0,
   __TOML_TOKEN_TYPE_LBRACKET,
   __TOML_TOKEN_TYPE_RBRACKET,
+  __TOML_TOKEN_TYPE_EQUALS,
   __TOML_TOKEN_TYPE_IDENTIFIER,
   __TOML_TOKEN_TYPE_EOF,
 
@@ -44,7 +45,9 @@ PRIVATE void __toml_lexer_skip_whitespace(__toml_lexer_t *lexer);
 PRIVATE int32_t __toml_lexer_next_token(__toml_lexer_t *lexer, __toml_token_t *t);
 PRIVATE void  __toml_lexer_read_name(__toml_lexer_t *lexer, string_view_t *name);
 
+PRIVATE int32_t __toml_parse_value_into_toml_value(toml_parser_t *p, __toml_lexer_t *l, __toml_token_t *token, string_view_t value, toml_value_t *toml_value);
 PRIVATE int32_t __toml_parser_parse_tablename(toml_parser_t *p, __toml_lexer_t *, void *ctx, toml_parser_on_table on_table);
+PRIVATE int32_t __toml_parser_parse_key_value(toml_parser_t *p, __toml_lexer_t *, __toml_token_t*, void *ctx, toml_parser_on_key_value_pair on_key_value);
 PRIVATE int32_t __toml_parser_emit_diagnostic(toml_parser_t *p, __toml_parser_diagnostic_t diagnostic);
 
 #define TOML_PARSER_STOP 0xff
@@ -79,8 +82,15 @@ int32_t toml_parser_parse(toml_parser_t *parser, void *ctx, toml_parser_on_key_v
     }; break;
     case __TOML_TOKEN_TYPE_IDENTIFIER:
     {
-      // TODO: we still don't handle key-value pairs, it would be used here...
-      UNUSED(on_key_value_pair);
+      int32_t err = __toml_parser_parse_key_value(parser, &l, &token, ctx, on_key_value_pair);
+      if (err == TOML_PARSER_STOP)
+      {
+        return 0;
+      }
+      else if (err != 0)
+      {
+        return err;
+      }
     }; break;
     case __TOML_TOKEN_TYPE_RBRACKET:
     {
@@ -88,6 +98,16 @@ int32_t toml_parser_parse(toml_parser_t *parser, void *ctx, toml_parser_on_key_v
                                     .line = token.line,
                                     .column = token.column,
                                     .error_message = string_view_from_cstr("error: no TOML token starts with a ']'."),
+                                  }));
+      return TOML_PARSER_ERROR;
+    }; break;
+
+    case __TOML_TOKEN_TYPE_EQUALS:
+    {
+      TRY(__toml_parser_emit_diagnostic(parser, (__toml_parser_diagnostic_t){
+                                    .line = token.line,
+                                    .column = token.column,
+                                    .error_message = string_view_from_cstr("error: no TOML token starts with a '='."),
                                   }));
       return TOML_PARSER_ERROR;
     }; break;
@@ -120,11 +140,18 @@ int32_t __toml_parser_parse_tablename(toml_parser_t *p, __toml_lexer_t *lexer, v
   }
 
   // tablename is token.value
-  toml_parser_state_t s = on_table(ctx, token.value);
-  if (s == TOML_PARSER_STATE_DONE)
+  if (on_table != NULL)
   {
-    return TOML_PARSER_STOP;
+    // TODO: on_table should be able to trigger a failure
+    // Currently the most it can do is just stop parsing
+    toml_parser_state_t s = on_table(ctx, token.value);
+    if (s == TOML_PARSER_STATE_DONE)
+    {
+      return TOML_PARSER_STOP;
+    }
   }
+
+  p->curr_tablename = token.value;
 
   TRY(__toml_lexer_next_token(lexer, &token));
   if (token.type != __TOML_TOKEN_TYPE_RBRACKET)
@@ -137,6 +164,70 @@ int32_t __toml_parser_parse_tablename(toml_parser_t *p, __toml_lexer_t *lexer, v
                                     }));
     return TOML_PARSER_ERROR;
   }
+  return 0;
+}
+
+PRIVATE int32_t __toml_parser_parse_key_value(toml_parser_t *p, __toml_lexer_t *l, __toml_token_t *token, void *ctx, toml_parser_on_key_value_pair on_key_value)
+{
+  if (string_view_equals(p->curr_tablename, string_view_empty()))
+  {
+
+    TRY(__toml_parser_emit_diagnostic(p, (__toml_parser_diagnostic_t){
+                                      .line=token->line,
+                                      .column=token->column,
+                                      .error_message = string_view_from_cstr("error: can't parse key-value pairs before parsing a tablename"),
+                                    }));
+  }
+
+  string_view_t key = token->value;
+  TRY(__toml_lexer_next_token(l, token))
+  if (token->type != __TOML_TOKEN_TYPE_EQUALS)
+  {
+    
+    TRY(__toml_parser_emit_diagnostic(p, (__toml_parser_diagnostic_t){
+                                      .line=token->line,
+                                      .column=token->column,
+                                      .error_message = string_view_from_cstr("error: key must be followed by '='."),
+                                    }));
+    return TOML_PARSER_ERROR;
+  }
+
+  TRY(__toml_lexer_next_token(l, token))
+
+  string_view_t value = token->value;
+  toml_value_t toml_value = {0};
+  TRY(__toml_parse_value_into_toml_value(p, l, token, value, &toml_value));
+
+  if (on_key_value != NULL)
+  {      
+    toml_parser_state_t s = on_key_value(ctx, p->curr_tablename, key, toml_value);
+    if (s == TOML_PARSER_STATE_DONE)
+    {
+      return TOML_PARSER_STOP;
+    }
+
+  }
+  return 0;
+}
+
+PRIVATE int32_t __toml_parse_value_into_toml_value(toml_parser_t *p, __toml_lexer_t *l, __toml_token_t *token, string_view_t value, toml_value_t *toml_value)
+{
+  if (token->type != __TOML_TOKEN_TYPE_IDENTIFIER)
+  {
+    
+    TRY(__toml_parser_emit_diagnostic(p, (__toml_parser_diagnostic_t){
+                                      .line=token->line,
+                                      .column=token->column,
+                                      .error_message = string_view_from_cstr("error: failed to parse value for TOML key."),
+                                    }));
+    return TOML_PARSER_ERROR;
+  }
+
+  // Might be used for tokens that have for instance "", or smth like that
+  UNUSED(l);
+
+  toml_value->tag = TOML_VALUE_TAG_STRING;
+  toml_value->as.str = value;
   return 0;
 }
 
@@ -199,6 +290,11 @@ int32_t __toml_lexer_next_token(__toml_lexer_t *lexer, __toml_token_t *tok)
     tok->type  = __TOML_TOKEN_TYPE_RBRACKET;
     tok->value = string_view_from_cstr("]");
   }; break; 
+  case '=':
+  {
+    tok->type  = __TOML_TOKEN_TYPE_EQUALS;
+    tok->value = string_view_from_cstr("=");
+  }; break;
   case 0:
   {
     tok->type = __TOML_TOKEN_TYPE_EOF;
