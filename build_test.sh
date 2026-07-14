@@ -38,5 +38,8 @@ $CC $CFLAGS libs/libencoding/toml/toml_parser_tests.c -o build/toml_parser_tests
 # the static internals, so it must NOT be listed as a separate source here.
 $CC $CFLAGS libs/libhashtable/swisstables_tests.c -o build/swisstables_tests $LIBSTRVIEWBIN $LIBARENABIN $LIBTESTBIN $INCLUDES
 
+# 7. Build the logging writer library tests
+$CC $CFLAGS libs/liblogging/writer_tests.c -o build/writer_tests libs/liblogging/writer.c $LIBSTRVIEWBIN $LIBTESTBIN $INCLUDES
+
 echo "Build successful."
 
