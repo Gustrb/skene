@@ -41,5 +41,10 @@ $CC $CFLAGS libs/libhashtable/swisstables_tests.c -o build/swisstables_tests $LI
 # 7. Build the logging writer library tests
 $CC $CFLAGS libs/liblogging/writer_tests.c -o build/writer_tests libs/liblogging/writer.c $LIBSTRVIEWBIN $LIBTESTBIN $INCLUDES
 
+# 8. Build the logging formatter library tests
+# NB: formatter.c is #included by the test (see its header comment) to reach the
+# static internals, so it must NOT be listed as a separate source here.
+$CC $CFLAGS libs/liblogging/formatter_tests.c -o build/formatter_tests $LIBSTRVIEWBIN $LIBTESTBIN $INCLUDES
+
 echo "Build successful."
 
