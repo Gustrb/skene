@@ -13,7 +13,7 @@ PRIVATE void __toml_parser_should_identify_errors_when_parsing_key_value_pairs(v
 
 int main(void)
 {
-  TEST_START(34);
+  TEST_START(36);
 
   __toml_parser_new_should_be_able_to_instantiate_a_new_toml_parser();
   __toml_parser_should_be_able_to_parse_tables();
@@ -194,9 +194,11 @@ PRIVATE void __toml_parser_should_be_able_to_parse_key_value_pairs(void)
 }
 
 PRIVATE void __toml_parser_should_fail_to_parse_malformed_value(void);
+PRIVATE void __toml_parser_should_fail_to_parse_malformed_key(void);
 
 PRIVATE void __toml_parser_should_identify_errors_when_parsing_key_value_pairs(void)
 {
+  __toml_parser_should_fail_to_parse_malformed_key();
   __toml_parser_should_fail_to_parse_malformed_value();
 }
 
@@ -210,5 +212,18 @@ PRIVATE void __toml_parser_should_fail_to_parse_malformed_value(void)
 
   int32_t err = toml_parser_parse(&p, (void *)&context, __toml_parser_on_key_value, NULL);
   ASSERT_INT_EQ(TOML_PARSER_ERROR, err, "there should errors when parsing TOML with a key that has '==' instead of '='");
+  ASSERT_INT_EQ(1, p.__diagnostics_len, "there should be diagnostics after parsing it");
+}
+
+PRIVATE void __toml_parser_should_fail_to_parse_malformed_key(void)
+{  
+  toml_parser_t p = {0};
+  string_view_t file = string_view_from_cstr("[tablename]\n=");
+  toml_parser_new(&p, file);
+
+  toml_parsed_file context = {0};
+
+  int32_t err = toml_parser_parse(&p, (void *)&context, __toml_parser_on_key_value, NULL);
+  ASSERT_INT_EQ(TOML_PARSER_ERROR, err, "there should errors when parsing TOML with a key that starts with '==' instead of '='");
   ASSERT_INT_EQ(1, p.__diagnostics_len, "there should be diagnostics after parsing it");
 }
