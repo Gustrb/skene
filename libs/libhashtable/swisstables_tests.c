@@ -179,7 +179,7 @@ void __assert_insert_find_roundtrip(void)
 {
   sw_table_t t;
   arena_t a;
-  char *backing = table_setup(&t, &a, 4);
+  char *backing = table_setup(&t, &a, 32);
   ASSERT_BOOL(backing != NULL, "sw_table_init succeeds"); /* 4 groups = 32 slots */
 
   /* Values are borrowed void* pointers; the payloads live on this frame and
@@ -206,7 +206,7 @@ void __assert_update_existing(void)
 {
   sw_table_t t;
   arena_t a;
-  char *backing = table_setup(&t, &a, 4);
+  char *backing = table_setup(&t, &a, 32);
   ASSERT_BOOL(backing != NULL, "sw_table_init succeeds");
 
   int first = 1, second = 99;
@@ -226,7 +226,7 @@ void __assert_find_null_result(void)
 {
   sw_table_t t;
   arena_t a;
-  char *backing = table_setup(&t, &a, 4);
+  char *backing = table_setup(&t, &a, 32);
   ASSERT_BOOL(backing != NULL, "sw_table_init succeeds");
   int payload = 1;
   ASSERT_INT_EQ(0, sw_table_insert(&t, SV("alpha"), &payload), "insert alpha");
@@ -242,7 +242,7 @@ void __assert_many_keys_collisions(void)
 {
   sw_table_t t;
   arena_t a;
-  char *backing = table_setup(&t, &a, 4);
+  char *backing = table_setup(&t, &a, 32);
   ASSERT_BOOL(backing != NULL, "sw_table_init succeeds"); /* 32 slots, limit = 28 */
 
   /* 20 keys forces multiple keys per group and exercises the probe walk
@@ -283,7 +283,7 @@ void __assert_resize_growth(void)
 {
   sw_table_t t;
   arena_t a;
-  char *backing = table_setup(&t, &a, 1); /* 1 group = 8 slots, limit = 7 */
+  char *backing = table_setup(&t, &a, 8); /* 8 elements -> 1 group, 8 slots, limit = 7 */
   ASSERT_BOOL(backing != NULL, "sw_table_init succeeds");
 
   /* Far more keys than the initial table holds -> forces several resizes. */
@@ -322,7 +322,7 @@ void __assert_resize_preserves_updates(void)
 {
   sw_table_t t;
   arena_t a;
-  char *backing = table_setup(&t, &a, 1);
+  char *backing = table_setup(&t, &a, 8);
   ASSERT_BOOL(backing != NULL, "sw_table_init succeeds");
 
   enum { N = 50 };
@@ -370,7 +370,7 @@ void __assert_insert_arena_oom(void)
   arena_new_with_underlying_buffer(&a, buf, sizeof buf);
 
   sw_table_t t;
-  ASSERT_INT_EQ(0, sw_table_init(&t, &a, 1), "init fits in a tight arena"); /* 1 group, limit 7 */
+  ASSERT_INT_EQ(0, sw_table_init(&t, &a, 8), "init fits in a tight arena"); /* 8 elements -> 1 group, limit 7 */
 
   char keys[SW_TABLE_GROUPSIZE][16];
   int payload[SW_TABLE_GROUPSIZE];
@@ -409,7 +409,7 @@ void __assert_delete_basic(void)
 {
   sw_table_t t;
   arena_t a;
-  char *backing = table_setup(&t, &a, 4);
+  char *backing = table_setup(&t, &a, 32);
   ASSERT_BOOL(backing != NULL, "sw_table_init succeeds");
 
   int payload[3] = {1, 2, 3};
@@ -432,7 +432,7 @@ void __assert_delete_absent(void)
 {
   sw_table_t t;
   arena_t a;
-  char *backing = table_setup(&t, &a, 4);
+  char *backing = table_setup(&t, &a, 32);
   ASSERT_BOOL(backing != NULL, "sw_table_init succeeds");
   int payload = 1;
   sw_table_insert(&t, SV("alpha"), &payload);
@@ -449,7 +449,7 @@ void __assert_delete_empty_branch(void)
      can free the slot outright -> no tombstone, dead stays 0. */
   sw_table_t t;
   arena_t a;
-  char *backing = table_setup(&t, &a, 1);
+  char *backing = table_setup(&t, &a, 8);
   ASSERT_BOOL(backing != NULL, "sw_table_init succeeds");
 
   int payload[3] = {1, 2, 3};
@@ -476,7 +476,7 @@ void __assert_delete_tombstone_and_chain(void)
      overflow key becomes unreachable. */
   sw_table_t t;
   arena_t a;
-  char *backing = table_setup(&t, &a, 2);
+  char *backing = table_setup(&t, &a, 16);
   ASSERT_BOOL(backing != NULL, "sw_table_init succeeds");
   ASSERT_INT_EQ(2, (int)t.groups_len, "table starts with 2 groups");
 
@@ -516,7 +516,7 @@ void __assert_delete_then_reinsert(void)
   /* Deleting then reinserting the same key must reuse space and not duplicate. */
   sw_table_t t;
   arena_t a;
-  char *backing = table_setup(&t, &a, 4);
+  char *backing = table_setup(&t, &a, 32);
   ASSERT_BOOL(backing != NULL, "sw_table_init succeeds");
 
   int first = 1, second = 2;
