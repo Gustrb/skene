@@ -51,8 +51,8 @@ typedef struct {
   uint8_t field_count;
 } log_record_t;
 
-#define LOG_FIELD_STRING(k, v)  ((log_field_t){ .key=string_view_from_cstr(k), .type=LOG_FIELD_TYPE_STRING, .as.string = v                        })
-#define LOG_FIELD_CSTRING(k, v) ((log_field_t){ .key=string_view_from_cstr(k), .type=LOG_FIELD_TYPE_STRING, .as.string = string_view_from_cstr(v) })
+#define LOG_FIELD_STRINGV(k, v) ((log_field_t){ .key=string_view_from_cstr(k), .type=LOG_FIELD_TYPE_STRING, .as.string = v                        })
+#define LOG_FIELD_STRING(k, v)  ((log_field_t){ .key=string_view_from_cstr(k), .type=LOG_FIELD_TYPE_STRING, .as.string = string_view_from_cstr(v) })
 #define LOG_FIELD_INT64(k, v)   ((log_field_t){ .key=string_view_from_cstr(k), .type=LOG_FIELD_TYPE_INT64,  .as.i64    = v                        })
 #define LOG_FIELD_INT32(k, v)   ((log_field_t){ .key=string_view_from_cstr(k), .type=LOG_FIELD_TYPE_INT32,  .as.i32    = v                        })
 #define LOG_FIELD_ERR(k, v)     ((log_field_t){ .key=string_view_from_cstr(k), .type=LOG_FIELD_TYPE_INT32,  .as.i32    = v                        })

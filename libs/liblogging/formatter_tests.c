@@ -127,7 +127,7 @@ void __assert_field_value(void)
   log_field_t f;
 
   w = capture_writer(&cap);
-  f = LOG_FIELD_CSTRING("k", "hello");
+  f = LOG_FIELD_STRING("k", "hello");
   writer_write_field_value(&w, &f);
   ASSERT_BOOL(strcmp(capture_cstr(&cap), "hello") == 0,
               "a string field should render its contents verbatim");
@@ -222,7 +222,7 @@ void __assert_console_formatter(void)
     int rc = fmt(&rec, &w);
     ASSERT_INT_EQ(0, rc, "console formatter should return 0");
     ASSERT_BOOL(strcmp(capture_cstr(&cap),
-                       "[1970-01-01T00:00:00.000000000Z INFO]: hi\n") == 0,
+                       "[1970-01-01T00:00:00.000000000Z INFO]: \"hi\"\n") == 0,
                 "a field-less record should render timestamp, level and message");
   }
 
@@ -235,10 +235,10 @@ void __assert_console_formatter(void)
       .message = string_view_from_cstr("hi"),
       .field_count = 1,
     };
-    rec.fields[0] = LOG_FIELD_CSTRING("user", "root");
+    rec.fields[0] = LOG_FIELD_STRING("user", "root");
     fmt(&rec, &w);
     ASSERT_BOOL(strcmp(capture_cstr(&cap),
-                       "[1970-01-01T00:00:00.000000000Z INFO]: hiuser: root\n") == 0,
+                       "[1970-01-01T00:00:00.000000000Z INFO]: \"hi\" (user=root)\n") == 0,
                 "a single field should render its key and value");
   }
 
@@ -251,11 +251,11 @@ void __assert_console_formatter(void)
       .message = string_view_from_cstr("hi"),
       .field_count = 2,
     };
-    rec.fields[0] = LOG_FIELD_CSTRING("a", "x");
+    rec.fields[0] = LOG_FIELD_STRING("a", "x");
     rec.fields[1] = LOG_FIELD_INT32("code", -7);
     fmt(&rec, &w);
     ASSERT_BOOL(strcmp(capture_cstr(&cap),
-                       "[1970-01-01T00:00:00.000000000Z INFO]: hia: x, code: -7\n") == 0,
+                       "[1970-01-01T00:00:00.000000000Z INFO]: \"hi\" (a=x, code=-7)\n") == 0,
                 "two fields should be joined by a single ', ' separator and render values");
   }
 }
