@@ -26,6 +26,13 @@ PUBLIC log_formatter_fn_t console_formatter(void)
   return __formatter_console_formatter;
 }
 
+PUBLIC timestamp_t time_now(void)
+{
+  struct timespec ts;
+  clock_gettime(CLOCK_REALTIME, &ts);
+  return (timestamp_t)ts.tv_sec * 1000000000LL + (timestamp_t)ts.tv_nsec;
+}
+
 // TODO: error check(?)
 #define __WRITE(writer, s) writer->write(writer, string_view_from_cstr(s))
 

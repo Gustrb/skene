@@ -7,6 +7,8 @@
 
 #define UNUSED(x) ((void)(x))
 
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+
 #define TODO(msg) \
   fprintf(stderr, msg "\n"); \
   exit(9999);
