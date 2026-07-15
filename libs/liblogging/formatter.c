@@ -35,9 +35,15 @@ PRIVATE int __formatter_console_formatter(const log_record_t *record, writer_t *
   writer_time_format_rfc3339(writer, record->timestamp);
   __WRITE(writer, " ");
   writer_write_level(writer, record->level);
-  __WRITE(writer, "]: ");
+  __WRITE(writer, "]: \"");
 
   writer_write_string_view(writer, record->message);
+
+  __WRITE(writer, "\"");
+  if (record->field_count > 0)
+  {
+    __WRITE(writer, " (");
+  }
 
   for (uint8_t i = 0; i < record->field_count; ++i)
   {
@@ -47,9 +53,15 @@ PRIVATE int __formatter_console_formatter(const log_record_t *record, writer_t *
     }
 
     writer_write_string_view(writer, record->fields[i].key);
-    __WRITE(writer, ": ");
+    __WRITE(writer, "=");
     writer_write_field_value(writer, &record->fields[i]);
   }
+
+  if (record->field_count > 0)
+  {
+    __WRITE(writer, ")");
+  }
+
   __WRITE(writer, "\n");
   
   return 0;

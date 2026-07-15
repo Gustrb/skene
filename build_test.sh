@@ -46,5 +46,8 @@ $CC $CFLAGS libs/liblogging/writer_tests.c -o build/writer_tests libs/liblogging
 # static internals, so it must NOT be listed as a separate source here.
 $CC $CFLAGS libs/liblogging/formatter_tests.c -o build/formatter_tests $LIBSTRVIEWBIN $LIBTESTBIN $INCLUDES
 
+# 9. Build the logging handler library tests
+$CC $CFLAGS libs/liblogging/handler_tests.c -o build/handler_tests libs/liblogging/handler.c $LIBSTRVIEWBIN $LIBTESTBIN $INCLUDES
+
 echo "Build successful."
 
