@@ -14,9 +14,22 @@ PUBLIC int32_t string_builder_new(string_builder_t *builder)
 
 PUBLIC int32_t string_builder_new_with_capacity(string_builder_t *builder, size_t cap)
 {
+  return string_builder_new_with_capacity_into_arena(NULL, builder, cap);
+}
+
+PUBLIC int32_t string_builder_new_with_capacity_into_arena(arena_t *arena, string_builder_t *builder, size_t cap)
+{
   builder->capacity = cap;
   builder->length = 0;
-  builder->ptr = malloc(sizeof(char) * builder->capacity);
+  if (arena != NULL)
+  {
+    builder->ptr = arena_new(arena, char, cap);
+  }
+  else
+  {
+    builder->ptr = malloc(sizeof(char) * builder->capacity);
+  }
+
   if (builder->ptr == NULL)
   {
     return ERR_LIBSTRBUILDER_NOMEM;
@@ -24,6 +37,7 @@ PUBLIC int32_t string_builder_new_with_capacity(string_builder_t *builder, size_
 
   return 0;
 }
+
 
 PUBLIC int32_t string_builder_from_cstr(string_builder_t *b, const char *str)
 {
