@@ -20,6 +20,7 @@ LIBSTRVIEWBIN=build/libstrview.o
 LIBARENABIN=build/libarena.o
 LIBHASHTABLEBIN=build/libhashtable.o
 LIBLOGBIN=build/log.o
+LIBSCHEMEBIN=build/scheme.o
 
 # ---------------------------------------------------------------------------
 # Shared support objects. These are prerequisites for the test binaries below,
@@ -29,6 +30,7 @@ $CC $CFLAGS libs/libtest/test.c -c -o $LIBTESTBIN $INCLUDES
 $CC $CFLAGS libs/libstrview/string_view.c -c -o $LIBSTRVIEWBIN $INCLUDES
 $CC $CFLAGS libs/libarena/arena.c -c -o $LIBARENABIN $INCLUDES
 $CC $CFLAGS libs/libhashtable/swisstables.c -c -o $LIBHASHTABLEBIN $INCLUDES
+$CC $CFLAGS libs/libscheme/scheme.c -c -o $LIBSCHEMEBIN $INCLUDES
 
 # The whole logging library bundled into a single relocatable object. Each
 # liblogging translation unit is compiled, then merged with `ld -r` so the test
@@ -60,6 +62,7 @@ $CC $CFLAGS libs/liblogging/writer_tests.c -o build/writer_tests $LIBLOGBIN $LIB
 $CC $CFLAGS libs/liblogging/formatter_tests.c -o build/formatter_tests $LIBSTRVIEWBIN $LIBTESTBIN $INCLUDES
 $CC $CFLAGS libs/liblogging/handler_tests.c -o build/handler_tests $LIBLOGBIN $LIBSTRVIEWBIN $LIBTESTBIN $INCLUDES
 $CC $CFLAGS libs/liblogging/log_tests.c -o build/log_tests $LIBLOGBIN $LIBSTRVIEWBIN $LIBTESTBIN $INCLUDES
+$CC $CFLAGS libs/libscheme/scheme_tests.c -o build/schemetests $LIBSCHEMEBIN $LIBSTRVIEWBIN $LIBARENABIN $LIBTESTBIN $INCLUDES
 EOF
 }
 

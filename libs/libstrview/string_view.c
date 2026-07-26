@@ -93,3 +93,61 @@ PUBLIC uint8_t string_view_starts_with_cstr(string_view_t a, const char *b)
 {
   return string_view_starts_with(a, string_view_from_cstr(b));
 }
+
+PUBLIC int32_t string_view_into_i32(string_view_t a, int32_t *out)
+{
+  if (a.length == 0)
+  {
+    return ERR_STRVIEW_EMPTY;
+  }
+
+  size_t i = 0;
+  uint8_t negative = 0;
+
+  if (a.addr[0] == '+' || a.addr[0] == '-')
+  {
+    negative = a.addr[0] == '-';
+    i = 1;
+
+    // A lone sign is not a valid integer.
+    if (a.length == 1)
+    {
+      return ERR_STRVIEW_INVALID_DIGIT;
+    }
+  }
+
+  // We accumulate into the negative side of the range so that INT32_MIN,
+  // which has no positive counterpart, can still be represented.
+  int32_t acc = 0;
+  for (; i < a.length; ++i)
+  {
+    char c = a.addr[i];
+    if (c < '0' || c > '9')
+    {
+      return ERR_STRVIEW_INVALID_DIGIT;
+    }
+
+    int32_t digit = c - '0';
+
+    // acc * 10 - digit < INT32_MIN  =>  overflow.
+    if (acc < (INT32_MIN + digit) / 10)
+    {
+      return ERR_STRVIEW_OVERFLOW;
+    }
+
+    acc = acc * 10 - digit;
+  }
+
+  if (!negative)
+  {
+    // -acc overflows only when acc == INT32_MIN.
+    if (acc == INT32_MIN)
+    {
+      return ERR_STRVIEW_OVERFLOW;
+    }
+    acc = -acc;
+  }
+
+  *out = acc;
+  return 0;
+}

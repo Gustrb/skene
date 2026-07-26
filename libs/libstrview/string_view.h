@@ -26,6 +26,12 @@ PUBLIC string_view_t string_view_from_cstr(const char *a);
 PUBLIC string_view_split_iter_t string_view_split(string_view_t a, char sep);
 PUBLIC string_view_t string_view_split_iter_next(string_view_split_iter_t *svsi);
 
+#define ERR_STRVIEW_EMPTY 1
+#define ERR_STRVIEW_INVALID_DIGIT 2
+#define ERR_STRVIEW_OVERFLOW 3
+
+PUBLIC int32_t string_view_into_i32(string_view_t a, int32_t *out);
+
 #define string_view_empty() ((string_view_t){.addr="", .length=0})
 
 #endif
