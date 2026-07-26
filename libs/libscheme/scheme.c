@@ -245,6 +245,15 @@ PRIVATE int32_t __scheme_lexer_next_token(__scheme_lexer_t *lexer, __scheme_toke
     tok->type = __SCHEME_TOKEN_TYPE_RPAREN;
     tok->value = string_view_from_cstr(")");
   }; break;
+  case '-':
+  {
+    if (__is_digit(lexer->input.addr[lexer->read_position]))
+    {
+      __scheme_lexer_read_num(lexer, &tok->value);
+      tok->type = __SCHEME_TOKEN_TYPE_NUMBER;
+      return 0;
+    }
+  }; break;
   default:
   {
     if (__is_digit(lexer->ch))
@@ -263,6 +272,12 @@ PRIVATE int32_t __scheme_lexer_next_token(__scheme_lexer_t *lexer, __scheme_toke
 PRIVATE void __scheme_lexer_read_num(__scheme_lexer_t *lexer, string_view_t *value)
 {
   size_t pos = lexer->position;
+
+  // negative number handling
+  if (lexer->ch == '-')
+  {
+    __scheme_lexer_read_char(lexer);
+  }
 
   while (__is_digit(lexer->ch))
   {

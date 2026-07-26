@@ -21,6 +21,7 @@ LIBARENABIN=build/libarena.o
 LIBHASHTABLEBIN=build/libhashtable.o
 LIBLOGBIN=build/log.o
 LIBSCHEMEBIN=build/scheme.o
+LIBSTRBUILDERBIN=build/libstrbuilder.o
 
 # ---------------------------------------------------------------------------
 # Shared support objects. These are prerequisites for the test binaries below,
@@ -28,6 +29,7 @@ LIBSCHEMEBIN=build/scheme.o
 # ---------------------------------------------------------------------------
 $CC $CFLAGS libs/libtest/test.c -c -o $LIBTESTBIN $INCLUDES
 $CC $CFLAGS libs/libstrview/string_view.c -c -o $LIBSTRVIEWBIN $INCLUDES
+$CC $CFLAGS libs/libstrbuilder/strbuilder.c -c -o $LIBSTRBUILDERBIN $INCLUDES
 $CC $CFLAGS libs/libarena/arena.c -c -o $LIBARENABIN $INCLUDES
 $CC $CFLAGS libs/libhashtable/swisstables.c -c -o $LIBHASHTABLEBIN $INCLUDES
 $CC $CFLAGS libs/libscheme/scheme.c -c -o $LIBSCHEMEBIN $INCLUDES
@@ -53,7 +55,7 @@ ld -r -o $LIBLOGBIN build/obj/writer.o build/obj/handler.o build/obj/log.o build
 test_builds() {
 cat <<EOF
 $CC $CFLAGS tools/elfview/elfview_tests.c -o build/elfview_tests tools/elfview/elf.c $LIBTESTBIN $INCLUDES
-$CC $CFLAGS libs/libstrbuilder/strbuilder_tests.c -o build/strbuilder_tests libs/libstrbuilder/strbuilder.c $LIBTESTBIN $INCLUDES
+$CC $CFLAGS libs/libstrbuilder/strbuilder_tests.c -o build/strbuilder_tests libs/libstrbuilder/strbuilder.c $LIBARENABIN $LIBTESTBIN $INCLUDES
 $CC $CFLAGS libs/libstrview/string_view_tests.c -o build/string_view_tests $LIBSTRVIEWBIN $LIBTESTBIN $INCLUDES
 $CC $CFLAGS libs/libarena/arena_tests.c -o build/arena_tests $LIBARENABIN $LIBTESTBIN $INCLUDES
 $CC $CFLAGS libs/libencoding/toml/toml_parser_tests.c -o build/toml_parser_tests libs/libencoding/toml/toml_parser.c $LIBARENABIN $LIBHASHTABLEBIN $LIBSTRVIEWBIN $LIBTESTBIN $INCLUDES
@@ -62,7 +64,7 @@ $CC $CFLAGS libs/liblogging/writer_tests.c -o build/writer_tests $LIBLOGBIN $LIB
 $CC $CFLAGS libs/liblogging/formatter_tests.c -o build/formatter_tests $LIBSTRVIEWBIN $LIBTESTBIN $INCLUDES
 $CC $CFLAGS libs/liblogging/handler_tests.c -o build/handler_tests $LIBLOGBIN $LIBSTRVIEWBIN $LIBTESTBIN $INCLUDES
 $CC $CFLAGS libs/liblogging/log_tests.c -o build/log_tests $LIBLOGBIN $LIBSTRVIEWBIN $LIBTESTBIN $INCLUDES
-$CC $CFLAGS libs/libscheme/scheme_tests.c -o build/schemetests $LIBSCHEMEBIN $LIBSTRVIEWBIN $LIBARENABIN $LIBTESTBIN $INCLUDES
+$CC $CFLAGS libs/libscheme/scheme_tests.c -o build/schemetests $LIBSCHEMEBIN $LIBSTRVIEWBIN $LIBSTRBUILDERBIN $LIBARENABIN $LIBTESTBIN $INCLUDES
 EOF
 }
 
