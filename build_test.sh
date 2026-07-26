@@ -55,7 +55,7 @@ ld -r -o $LIBLOGBIN build/obj/writer.o build/obj/handler.o build/obj/log.o build
 test_builds() {
 cat <<EOF
 $CC $CFLAGS tools/elfview/elfview_tests.c -o build/elfview_tests tools/elfview/elf.c $LIBTESTBIN $INCLUDES
-$CC $CFLAGS libs/libstrbuilder/strbuilder_tests.c -o build/strbuilder_tests libs/libstrbuilder/strbuilder.c $LIBARENABIN $LIBTESTBIN $INCLUDES
+$CC $CFLAGS libs/libstrbuilder/strbuilder_tests.c -o build/strbuilder_tests $LIBSTRBUILDERBIN $LIBARENABIN $LIBTESTBIN $INCLUDES
 $CC $CFLAGS libs/libstrview/string_view_tests.c -o build/string_view_tests $LIBSTRVIEWBIN $LIBTESTBIN $INCLUDES
 $CC $CFLAGS libs/libarena/arena_tests.c -o build/arena_tests $LIBARENABIN $LIBTESTBIN $INCLUDES
 $CC $CFLAGS libs/libencoding/toml/toml_parser_tests.c -o build/toml_parser_tests libs/libencoding/toml/toml_parser.c $LIBARENABIN $LIBHASHTABLEBIN $LIBSTRVIEWBIN $LIBTESTBIN $INCLUDES
