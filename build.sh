@@ -14,6 +14,7 @@ LIBSTRBUILDER=build/libstrbuilder.o
 LIBSTRVIEW=build/libstrview.o
 LIBARENABIN=build/libarena.o
 
+$CC $CFLAGS libs/libarena/arena.c -c -o $LIBARENABIN  $INCLUDES
 $CC $CFLAGS libs/libstrbuilder/strbuilder.c -c -o $LIBSTRBUILDER $INCLUDES
 $CC $CFLAGS libs/libstrview/string_view.c -c -o $LIBSTRVIEW $INCLUDES
 
