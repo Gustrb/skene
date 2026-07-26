@@ -7,6 +7,7 @@
 
 #include <common/common.h>
 #include <libstrview/string_view.h>
+#include <libarena/arena.h>
 
 typedef struct
 {
@@ -26,6 +27,8 @@ PUBLIC int32_t string_builder_append_string_view(string_builder_t *builder, stri
 PUBLIC void string_builder_append_string_view_unchecked(string_builder_t *builder, string_view_t sv);
 
 PUBLIC int32_t string_builder_from_cstr(string_builder_t *b, const char *str);
+
+PUBLIC int32_t string_builder_into_owned_cstr_arena(arena_t *arena, string_builder_t *b, const char **str);
 PUBLIC int32_t string_builder_into_owned_cstr(string_builder_t *b, const char **str);
 PUBLIC int32_t string_builder_destroy(string_builder_t *);
 

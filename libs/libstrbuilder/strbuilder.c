@@ -55,6 +55,21 @@ PUBLIC int32_t string_builder_into_owned_cstr(string_builder_t *b, const char **
   return 0;
 }
 
+PUBLIC int32_t string_builder_into_owned_cstr_arena(arena_t *arena, string_builder_t *b, const char **str)
+{
+  char *tmp = arena_new(arena, char, b->length + 1);
+  if (tmp == NULL)
+  {
+    return ERR_LIBSTRBUILDER_NOMEM;
+  }
+
+  memcpy(tmp, b->ptr, b->length);
+  tmp[b->length] = '\0';
+
+  *str = tmp;
+  return 0;
+}
+
 PRIVATE int32_t string_builder_ensure_capacity(string_builder_t *builder, size_t cap)
 {
 
