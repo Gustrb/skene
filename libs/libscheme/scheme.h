@@ -18,7 +18,7 @@ typedef struct {
 
 #define ERR_SCHEME_INVALID_TOKEN 1
 
-int32_t scheme_eval(arena_t arena, string_view_t input, scheme_value_t *output);
+int32_t scheme_eval(arena_t *arena, string_view_t input, scheme_value_t *output);
 
 
 #endif

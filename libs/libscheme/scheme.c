@@ -16,6 +16,7 @@ typedef enum {
   __SCHEME_TOKEN_TYPE_NUMBER,
   __SCHEME_TOKEN_TYPE_LPAREN,
   __SCHEME_TOKEN_TYPE_RPAREN,
+  __SCHEME_TOKEN_TYPE_SYMBOL,
   __SCHEME_TOKEN_TYPE_EOF,
 
   __TOML_TOKEN_TYPE_COUNT
@@ -30,7 +31,7 @@ typedef struct {
 } __scheme_token_t;
 
 typedef struct {
-  arena_t arena;
+  arena_t *arena;
   __scheme_lexer_t lexer;
 
   __scheme_token_t curr_token;
@@ -42,6 +43,7 @@ PRIVATE void __scheme_lexer_new(__scheme_lexer_t *lexer, string_view_t file);
 PRIVATE void __scheme_lexer_read_char(__scheme_lexer_t *lexer);
 PRIVATE int32_t __scheme_lexer_next_token(__scheme_lexer_t *lexer, __scheme_token_t *tok);
 PRIVATE void __scheme_lexer_skip_whitespace(__scheme_lexer_t *lexer);
+PRIVATE char __scheme_lexer_peek_token(__scheme_lexer_t *lexer);
 PRIVATE void __scheme_lexer_read_num(__scheme_lexer_t *lexer, string_view_t *);
 
 typedef enum {
@@ -66,7 +68,7 @@ typedef struct __scheme_expression_t {
   } as;
 } __scheme_expression_t;
 
-PRIVATE int32_t __scheme_parser_new(__scheme_parser_t *parser, __scheme_lexer_t lexer, arena_t arena);
+PRIVATE int32_t __scheme_parser_new(__scheme_parser_t *parser, __scheme_lexer_t lexer, arena_t *arena);
 PRIVATE int32_t __scheme_parser_advance(__scheme_parser_t *parser);
 PRIVATE int32_t __scheme_parser_parse_expression(__scheme_parser_t *, __scheme_expression_t *expr);
 PRIVATE uint8_t __scheme_parser_is_done(__scheme_parser_t *p);
@@ -82,7 +84,7 @@ PRIVATE int32_t __scheme_eval_number_expression(int32_t number, scheme_value_t *
   LIST       = '(' EXPRESSION* ')'
 */
 
-int32_t scheme_eval(arena_t arena, string_view_t input, scheme_value_t *output)
+int32_t scheme_eval(arena_t *arena, string_view_t input, scheme_value_t *output)
 {
   __scheme_lexer_t lexer = {0};
   __scheme_lexer_new(&lexer, input);
@@ -139,7 +141,7 @@ PRIVATE int32_t __scheme_eval_number_expression(int32_t number, scheme_value_t *
   return 0;
 }
 
-PRIVATE int32_t __scheme_parser_new(__scheme_parser_t *parser, __scheme_lexer_t lexer, arena_t arena)
+PRIVATE int32_t __scheme_parser_new(__scheme_parser_t *parser, __scheme_lexer_t lexer, arena_t *arena)
 {
   parser->arena = arena;
   parser->lexer = lexer;
@@ -247,12 +249,15 @@ PRIVATE int32_t __scheme_lexer_next_token(__scheme_lexer_t *lexer, __scheme_toke
   }; break;
   case '-':
   {
-    if (__is_digit(lexer->input.addr[lexer->read_position]))
+    if (__is_digit(__scheme_lexer_peek_token(lexer)))
     {
       __scheme_lexer_read_num(lexer, &tok->value);
       tok->type = __SCHEME_TOKEN_TYPE_NUMBER;
       return 0;
     }
+
+    tok->type = __SCHEME_TOKEN_TYPE_SYMBOL;
+    tok->value = string_view_from_cstr("-");
   }; break;
   default:
   {
@@ -286,6 +291,16 @@ PRIVATE void __scheme_lexer_read_num(__scheme_lexer_t *lexer, string_view_t *val
 
   value->addr = lexer->input.addr + pos;
   value->length = lexer->position - pos;
+}
+
+PRIVATE char __scheme_lexer_peek_token(__scheme_lexer_t *lexer)
+{
+  if (lexer->read_position >= lexer->input.length)
+  {
+    return 0;
+  }
+
+  return lexer->input.addr[lexer->read_position];
 }
 
 PRIVATE void __scheme_lexer_skip_whitespace(__scheme_lexer_t *lexer)
