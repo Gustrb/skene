@@ -1,9 +1,11 @@
+#include "libarena/arena.h"
 #include "strbuilder.h"
 #include <libtest/test.h>
 #include <string.h>
 
 void __assert_string_builder_new(void);
 void __assert_string_builder_new_with_capacity(void);
+void __assert_string_builder_new_with_capacity_into_an_arena(void);
 void __assert_string_builder_new_with_zero_capacity(void);
 void __assert_string_builder_from_cstr(void);
 void __assert_string_builder_from_empty_cstr(void);
@@ -19,10 +21,11 @@ void __assert_string_builder_destroy(void);
 
 int main(void)
 {
-  TEST_START(55);
+  TEST_START(57);
 
   __assert_string_builder_new();
   __assert_string_builder_new_with_capacity();
+  __assert_string_builder_new_with_capacity_into_an_arena();
   __assert_string_builder_new_with_zero_capacity();
   __assert_string_builder_from_cstr();
   __assert_string_builder_from_empty_cstr();
@@ -67,6 +70,25 @@ void __assert_string_builder_new_with_capacity(void)
   ASSERT_BOOL(b.ptr != NULL, "string_builder_new_with_capacity should allocate the backing buffer");
 
   string_builder_destroy(&b);
+}
+
+#define __BUFF_LEN 4
+static char __buff[__BUFF_LEN];
+
+void __assert_string_builder_new_with_capacity_into_an_arena(void)
+{
+  arena_t arena = {0};
+  arena_new_with_underlying_buffer(&arena, __buff, __BUFF_LEN);
+
+  string_builder_t b = {0};
+
+  int32_t err = string_builder_new_with_capacity_into_arena(&arena, &b, 2);
+  ASSERT_INT_EQ(0, err, "string_builder_new_with_capacity_into_an_arena() should succeed when the arena can fit");
+
+  string_builder_t builder_that_will_fail = {0};
+  err = string_builder_new_with_capacity_into_arena(&arena, &builder_that_will_fail, 4);
+  
+  ASSERT_INT_EQ(ERR_LIBSTRBUILDER_NOMEM, err, "string_builder_new_with_capacity_into_an_arena() should fail when the arena can't fit");
 }
 
 void __assert_string_builder_new_with_zero_capacity(void)

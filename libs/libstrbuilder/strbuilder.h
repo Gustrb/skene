@@ -20,6 +20,7 @@ typedef struct
 
 PUBLIC int32_t string_builder_new(string_builder_t *);
 PUBLIC int32_t string_builder_new_with_capacity(string_builder_t *, size_t);
+PUBLIC int32_t string_builder_new_with_capacity_into_arena(arena_t *arena, string_builder_t *, size_t);
 
 PUBLIC int32_t string_builder_append_cstr(string_builder_t *builder, const char *cstr);
 
