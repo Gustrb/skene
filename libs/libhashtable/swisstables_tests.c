@@ -37,6 +37,13 @@ void __assert_delete_absent(void);
 void __assert_delete_empty_branch(void);
 void __assert_delete_tombstone_and_chain(void);
 void __assert_delete_then_reinsert(void);
+void __assert_clear_drops_every_binding(void);
+void __assert_clear_keeps_storage(void);
+void __assert_clear_reuses_after_resize(void);
+void __assert_iter_empty_table(void);
+void __assert_iter_visits_every_binding(void);
+void __assert_iter_skips_dead_slots(void);
+void __assert_iter_accepts_null_outputs(void);
 
 /* Stand up a heap-backed arena and an arena-backed table for a test, and return
    the arena's backing buffer for the caller to free(). We manage the backing
@@ -85,7 +92,7 @@ static void make_colliding_keys(char out[][16], int count, size_t glen,
 
 int main(void)
 {
-  TEST_START(78);
+  TEST_START(278);
 
   __assert_group_match_none();
   __assert_group_match_all_empty();
@@ -107,6 +114,15 @@ int main(void)
   __assert_delete_empty_branch();
   __assert_delete_tombstone_and_chain();
   __assert_delete_then_reinsert();
+
+  __assert_clear_drops_every_binding();
+  __assert_clear_keeps_storage();
+  __assert_clear_reuses_after_resize();
+
+  __assert_iter_empty_table();
+  __assert_iter_visits_every_binding();
+  __assert_iter_skips_dead_slots();
+  __assert_iter_accepts_null_outputs();
 
   TEST_FINISH();
   return 0;
@@ -527,6 +543,236 @@ void __assert_delete_then_reinsert(void)
   void *out = NULL;
   ASSERT_BOOL(sw_table_find(&t, SV("alpha"), &out) == 1 && out == &second, "reinserted alpha holds the new pointer");
   ASSERT_INT_EQ(1, (int)t.resident, "reinsert reuses space, resident stays 1");
+
+  free(backing);
+}
+
+void __assert_clear_drops_every_binding(void)
+{
+  /* Clearing has to make every key unreachable, including ones that landed in
+     a probe chain rather than their home group. */
+  sw_table_t t;
+  arena_t a;
+  char *backing = table_setup(&t, &a, 32);
+  ASSERT_BOOL(backing != NULL, "sw_table_init succeeds");
+
+  int values[16];
+  char keys[16][16];
+  for (int i = 0; i < 16; i++)
+  {
+    values[i] = i;
+    snprintf(keys[i], sizeof keys[i], "k%d", i);
+    sw_table_insert(&t, SV(keys[i]), &values[i]);
+  }
+  ASSERT_INT_EQ(16, (int)t.resident, "all 16 keys are resident before the clear");
+
+  sw_table_clear(&t);
+  ASSERT_INT_EQ(0, (int)t.resident, "clear resets the resident count");
+  ASSERT_INT_EQ(0, (int)t.dead, "clear resets the tombstone count");
+
+  int all_gone = 1;
+  for (int i = 0; i < 16; i++)
+  {
+    void *out = NULL;
+    if (sw_table_find(&t, SV(keys[i]), &out) != 0) all_gone = 0;
+  }
+  ASSERT_BOOL(all_gone, "no key is reachable after a clear");
+
+  free(backing);
+}
+
+void __assert_clear_keeps_storage(void)
+{
+  /* The point of clear over re-init: the arena is not touched, so a table can
+     be refilled indefinitely without the allocator advancing. */
+  sw_table_t t;
+  arena_t a;
+  char *backing = table_setup(&t, &a, 32);
+  ASSERT_BOOL(backing != NULL, "sw_table_init succeeds");
+
+  metadata_t *controls = t.controls;
+  group_t *groups = t.groups;
+  size_t groups_len = t.groups_len;
+  uint32_t limit = t.limit;
+
+  int one = 1, two = 2;
+  sw_table_insert(&t, SV("alpha"), &one);
+
+  char *before = a.start;
+  sw_table_clear(&t);
+  ASSERT_BOOL(a.start == before, "clear does not allocate");
+
+  ASSERT_BOOL(t.controls == controls, "clear keeps the control array");
+  ASSERT_BOOL(t.groups == groups, "clear keeps the group array");
+  ASSERT_BOOL(t.groups_len == groups_len, "clear keeps the group count");
+  ASSERT_BOOL(t.limit == limit, "clear keeps the load limit");
+
+  /* And the storage still works: refilling after a clear must not allocate
+     either, which is what makes a recycled call frame free. */
+  ASSERT_INT_EQ(0, sw_table_insert(&t, SV("beta"), &two), "insert after clear succeeds");
+  ASSERT_BOOL(a.start == before, "refilling after a clear does not allocate");
+
+  void *out = NULL;
+  ASSERT_BOOL(sw_table_find(&t, SV("beta"), &out) == 1 && out == &two, "the refilled key is reachable");
+  ASSERT_INT_EQ(0, sw_table_find(&t, SV("alpha"), &out), "the cleared key stays gone");
+
+  free(backing);
+}
+
+void __assert_clear_reuses_after_resize(void)
+{
+  /* A table that has grown keeps its grown storage across a clear, so the
+     refill cannot go back to the arena either. */
+  sw_table_t t;
+  arena_t a;
+  char *backing = table_setup(&t, &a, 8);
+  ASSERT_BOOL(backing != NULL, "sw_table_init succeeds");
+
+  int values[64];
+  char keys[64][16];
+  for (int i = 0; i < 64; i++)
+  {
+    values[i] = i;
+    snprintf(keys[i], sizeof keys[i], "g%d", i);
+    sw_table_insert(&t, SV(keys[i]), &values[i]);
+  }
+  size_t grown = t.groups_len;
+  ASSERT_BOOL(grown > 1, "the table grew past its initial group count");
+
+  sw_table_clear(&t);
+  ASSERT_BOOL(t.groups_len == grown, "clear keeps the grown group count");
+
+  char *before = a.start;
+  int again = 7;
+  ASSERT_INT_EQ(0, sw_table_insert(&t, SV("g0"), &again), "insert after clear succeeds");
+  ASSERT_BOOL(a.start == before, "refilling a grown table after a clear does not allocate");
+
+  void *out = NULL;
+  ASSERT_BOOL(sw_table_find(&t, SV("g0"), &out) == 1 && out == &again, "the refilled key holds the new pointer");
+  ASSERT_INT_EQ(1, (int)t.resident, "only the refilled key is resident");
+
+  free(backing);
+}
+
+void __assert_iter_empty_table(void)
+{
+  sw_table_t t = {0};
+  arena_t a = {0};
+  char *backing = table_setup(&t, &a, 8);
+  ASSERT_BOOL(backing != NULL, "setup for iterating an empty table");
+
+  sw_table_iter_t it = {0};
+  sw_table_iter_new(&it, &t);
+  ASSERT_INT_EQ(0, sw_table_iter_next(&it, NULL, NULL), "an empty table yields nothing");
+  ASSERT_INT_EQ(0, sw_table_iter_next(&it, NULL, NULL), "an exhausted iterator stays exhausted");
+
+  free(backing);
+}
+
+/* Every binding exactly once, in some order. The counts are what matter: an
+   iterator that skipped a group, or that yielded a slot twice, would still
+   produce plausible-looking keys. */
+void __assert_iter_visits_every_binding(void)
+{
+  sw_table_t t = {0};
+  arena_t a = {0};
+  char *backing = table_setup(&t, &a, 8);
+  ASSERT_BOOL(backing != NULL, "setup for iterating a full table");
+
+  enum { N = 40 };
+  char keys[N][16];
+  int values[N];
+  for (int i = 0; i < N; ++i)
+  {
+    snprintf(keys[i], sizeof keys[i], "k%d", i);
+    values[i] = i;
+    ASSERT_INT_EQ(0, sw_table_insert(&t, SV(keys[i]), &values[i]), "insert for iteration");
+  }
+  ASSERT_BOOL(t.groups_len > 1, "the table resized, so iteration must span groups");
+
+  int seen[N] = {0};
+  size_t count = 0;
+  sw_table_iter_t it = {0};
+  sw_table_iter_new(&it, &t);
+
+  string_view_t key = {0};
+  void *value = NULL;
+  while (sw_table_iter_next(&it, &key, &value) == 1)
+  {
+    count++;
+    int index = *(int *)value;
+    ASSERT_BOOL(index >= 0 && index < N, "every yielded value is one we inserted");
+    ASSERT_BOOL(seen[index] == 0, "no binding is yielded twice");
+    ASSERT_BOOL(string_view_equals(key, SV(keys[index])), "the yielded key matches its value");
+    seen[index] = 1;
+  }
+
+  ASSERT_INT_EQ(N, (int)count, "iteration yields exactly the resident count");
+  ASSERT_INT_EQ((int)t.resident, (int)count, "iteration agrees with the table's own count");
+
+  free(backing);
+}
+
+/* Deleted and cleared slots keep their key and value bytes; only the control
+   byte marks them dead. An iterator that tested anything else would resurrect
+   them, which is exactly the bug that would let a collector trace freed
+   objects. */
+void __assert_iter_skips_dead_slots(void)
+{
+  sw_table_t t = {0};
+  arena_t a = {0};
+  char *backing = table_setup(&t, &a, 8);
+  ASSERT_BOOL(backing != NULL, "setup for iterating around deletions");
+
+  int one = 1, two = 2, three = 3;
+  sw_table_insert(&t, SV("one"), &one);
+  sw_table_insert(&t, SV("two"), &two);
+  sw_table_insert(&t, SV("three"), &three);
+
+  ASSERT_INT_EQ(1, sw_table_delete(&t, SV("two")), "delete the middle binding");
+
+  size_t count = 0;
+  sw_table_iter_t it = {0};
+  sw_table_iter_new(&it, &t);
+
+  void *value = NULL;
+  while (sw_table_iter_next(&it, NULL, &value) == 1)
+  {
+    ASSERT_BOOL(value != &two, "a deleted binding is never yielded");
+    count++;
+  }
+  ASSERT_INT_EQ(2, (int)count, "only the surviving bindings are yielded");
+
+  sw_table_clear(&t);
+  sw_table_iter_new(&it, &t);
+  ASSERT_INT_EQ(0, sw_table_iter_next(&it, NULL, NULL), "a cleared table yields nothing");
+
+  free(backing);
+}
+
+/* Both out-parameters are optional, and a caller that wants only the values —
+   which is how the collector uses this — must not have to provide a key slot. */
+void __assert_iter_accepts_null_outputs(void)
+{
+  sw_table_t t = {0};
+  arena_t a = {0};
+  char *backing = table_setup(&t, &a, 8);
+  ASSERT_BOOL(backing != NULL, "setup for null-output iteration");
+
+  int v = 7;
+  sw_table_insert(&t, SV("only"), &v);
+
+  sw_table_iter_t it = {0};
+  sw_table_iter_new(&it, &t);
+
+  void *value = NULL;
+  ASSERT_INT_EQ(1, sw_table_iter_next(&it, NULL, &value), "iterating with a NULL key slot");
+  ASSERT_BOOL(value == &v, "the value still arrives when the key is discarded");
+
+  sw_table_iter_new(&it, &t);
+  string_view_t key = {0};
+  ASSERT_INT_EQ(1, sw_table_iter_next(&it, &key, NULL), "iterating with a NULL value slot");
+  ASSERT_BOOL(string_view_equals(key, SV("only")), "the key still arrives when the value is discarded");
 
   free(backing);
 }

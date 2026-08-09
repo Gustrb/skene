@@ -12,7 +12,7 @@ HARDENING="-fstack-protector-all"
 
 # Context-dependent flags
 # Switch these if you want to test "Release" mode
-DEBUG_FLAGS="-g -O0 -fsanitize=address -fsanitize=undefined"
+DEBUG_FLAGS="-g -O2 -fsanitize=address -fsanitize=undefined"
 RELEASE_FLAGS="-O2 -DNDEBUG"
 
 # Final Aggregations
