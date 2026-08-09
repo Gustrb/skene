@@ -220,6 +220,58 @@ PUBLIC int32_t sw_table_delete(sw_table_t *table, string_view_t key)
   return 0;
 }
 
+PUBLIC void sw_table_clear(sw_table_t *table)
+{
+  /* Only the controls decide whether a slot is live, so resetting them to
+     "empty" drops every binding. The keys and values left behind in the groups
+     are unreachable: no lookup inspects a slot whose control byte does not
+     match. `groups_len` and `limit` are properties of the storage, which is
+     exactly what we are keeping, so they stay as they are. */
+  memset(table->controls, SW_TABLE_EMPTY_CONTROL,
+         table->groups_len * sizeof(metadata_t));
+
+  table->resident = 0;
+  table->dead     = 0;
+}
+
+PUBLIC void sw_table_iter_new(sw_table_iter_t *iter, const sw_table_t *table)
+{
+  iter->table = table;
+  iter->group = 0;
+  iter->slot  = 0;
+}
+
+/* A slot is live exactly when its control byte is non-negative: both sentinels,
+   empty (0x80) and deleted (0xFE), have the top bit set. That is the same test
+   the resize rehash uses, and it is the only thing that distinguishes a live
+   slot from one holding a stale key left behind by sw_table_clear. */
+PUBLIC int32_t sw_table_iter_next(sw_table_iter_t *iter, string_view_t *key, void **value)
+{
+  const sw_table_t *table = iter->table;
+
+  for (; iter->group < table->groups_len; iter->group++, iter->slot = 0)
+  {
+    const int8_t *controls = table->controls[iter->group];
+    const group_t *group   = &table->groups[iter->group];
+
+    for (; iter->slot < SW_TABLE_GROUPSIZE; iter->slot++)
+    {
+      if (controls[iter->slot] < 0)
+      {
+        continue;
+      }
+
+      if (key)   *key   = group->keys[iter->slot];
+      if (value) *value = group->values[iter->slot];
+
+      iter->slot++;
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
 PUBLIC void sw_table_free(sw_table_t *table)
 {
   // The arena owns every allocation, so there is nothing to free here; we only

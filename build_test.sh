@@ -64,7 +64,7 @@ $CC $CFLAGS libs/liblogging/writer_tests.c -o build/writer_tests $LIBLOGBIN $LIB
 $CC $CFLAGS libs/liblogging/formatter_tests.c -o build/formatter_tests $LIBSTRVIEWBIN $LIBTESTBIN $INCLUDES
 $CC $CFLAGS libs/liblogging/handler_tests.c -o build/handler_tests $LIBLOGBIN $LIBSTRVIEWBIN $LIBTESTBIN $INCLUDES
 $CC $CFLAGS libs/liblogging/log_tests.c -o build/log_tests $LIBLOGBIN $LIBSTRVIEWBIN $LIBTESTBIN $INCLUDES
-$CC $CFLAGS libs/libscheme/scheme_tests.c -o build/schemetests $LIBSCHEMEBIN $LIBSTRVIEWBIN $LIBSTRBUILDERBIN $LIBARENABIN $LIBTESTBIN $INCLUDES
+$CC $CFLAGS libs/libscheme/scheme_tests.c -o build/schemetests $LIBSCHEMEBIN $LIBSTRVIEWBIN $LIBSTRBUILDERBIN $LIBARENABIN $LIBHASHTABLEBIN $LIBTESTBIN $INCLUDES
 EOF
 }
 
